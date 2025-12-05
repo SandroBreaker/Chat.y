@@ -483,7 +483,16 @@ export default function App() {
 
   const renderChatScreen = () => {
     const activeProfile = getActiveProfile();
-    if (!activeProfile) return null;
+    
+    // Fallback: Se não encontrou o perfil ainda (carregando), mostra loading para evitar tela preta
+    if (!activeProfile) {
+       return (
+          <div className="flex flex-col h-full bg-ios-black items-center justify-center">
+             <div className="w-8 h-8 border-4 border-ios-lightGray border-t-ios-blue rounded-full animate-spin mb-4"></div>
+             <div className="text-ios-textSecondary text-sm animate-pulse">Loading conversation...</div>
+          </div>
+       );
+    }
 
     return (
       <div className="flex flex-col h-full bg-ios-black relative animate-slide-in-right overflow-hidden">
@@ -517,8 +526,8 @@ export default function App() {
           </button>
         </header>
 
-        {/* Scrollable Messages Area */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar space-y-1">
+        {/* Scrollable Messages Area - Added min-h-0 to fix collapse issue */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar space-y-1 min-h-0">
           {messages.length === 0 && (
              <div className="h-full flex flex-col items-center justify-center opacity-50 animate-fade-in">
                <img src={activeProfile.avatar_url} className="w-20 h-20 rounded-full grayscale mb-4 opacity-50" alt="" />
