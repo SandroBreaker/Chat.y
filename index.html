@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <title>Amour Message</title>
     <!-- Mantendo Tailwind via CDN para simplicidade no setup, mas em produção recomenda-se instalar via PostCSS -->
@@ -60,10 +60,22 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
       }
-      body {
+      html, body {
+        height: 100%;
+        overflow: hidden; /* Impede scroll na página inteira */
         background-color: #000000;
         color: #ffffff;
         -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        height: 100%;
+      }
+      /* Safe Area support for notched phones */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
       }
     </style>
   <script type="importmap">

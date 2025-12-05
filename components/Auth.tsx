@@ -52,60 +52,71 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-black px-6 animate-slide-up">
-      <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-white mb-2 text-center">Amour Message</h1>
-        <p className="text-ios-textSecondary text-center mb-8">Connect with your loved one.</p>
+    <div className="flex flex-col items-center justify-center h-full bg-black px-8 animate-slide-up">
+      <div className="w-full max-w-sm flex flex-col gap-6">
+        <div className="text-center space-y-2">
+           <h1 className="text-4xl font-bold text-white tracking-tight">Amour</h1>
+           <p className="text-ios-textSecondary text-[17px]">Connect with your loved one.</p>
+        </div>
 
         {error && (
-          <div className="bg-red-900/50 text-red-200 p-3 rounded-lg text-sm mb-4 border border-red-800">
+          <div className="bg-red-900/40 text-red-200 p-4 rounded-xl text-sm border border-red-800/50 backdrop-blur-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleAuth} className="flex flex-col gap-4">
           {isSignUp && (
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-ios-lightGray border border-ios-separator rounded-xl py-3 px-4 text-white focus:outline-none focus:border-ios-blue transition-colors"
-              required={isSignUp}
-            />
+            <div className="flex flex-col gap-1.5">
+               <label className="text-xs font-bold text-ios-textSecondary uppercase tracking-wider ml-1">Username</label>
+               <input
+                 type="text"
+                 placeholder="Enter your name"
+                 value={username}
+                 onChange={(e) => setUsername(e.target.value)}
+                 className="w-full bg-ios-lightGray/50 border border-ios-separator rounded-2xl py-3.5 px-5 text-white focus:outline-none focus:border-ios-blue transition-all focus:bg-ios-lightGray"
+                 required={isSignUp}
+               />
+            </div>
           )}
           
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-ios-lightGray border border-ios-separator rounded-xl py-3 px-4 text-white focus:outline-none focus:border-ios-blue transition-colors"
-            required
-          />
+          <div className="flex flex-col gap-1.5">
+             <label className="text-xs font-bold text-ios-textSecondary uppercase tracking-wider ml-1">Email</label>
+             <input
+               type="email"
+               placeholder="hello@example.com"
+               value={email}
+               onChange={(e) => setEmail(e.target.value)}
+               className="w-full bg-ios-lightGray/50 border border-ios-separator rounded-2xl py-3.5 px-5 text-white focus:outline-none focus:border-ios-blue transition-all focus:bg-ios-lightGray"
+               required
+             />
+          </div>
           
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-ios-lightGray border border-ios-separator rounded-xl py-3 px-4 text-white focus:outline-none focus:border-ios-blue transition-colors"
-            required
-          />
+          <div className="flex flex-col gap-1.5">
+             <label className="text-xs font-bold text-ios-textSecondary uppercase tracking-wider ml-1">Password</label>
+             <input
+               type="password"
+               placeholder="••••••••"
+               value={password}
+               onChange={(e) => setPassword(e.target.value)}
+               className="w-full bg-ios-lightGray/50 border border-ios-separator rounded-2xl py-3.5 px-5 text-white focus:outline-none focus:border-ios-blue transition-all focus:bg-ios-lightGray"
+               required
+             />
+          </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-ios-blue text-white font-semibold py-3.5 rounded-xl active:scale-95 transition-transform disabled:opacity-50 mt-4"
+            className="w-full bg-ios-blue text-white font-bold py-4 rounded-2xl active:scale-95 transition-all disabled:opacity-50 mt-4 shadow-lg shadow-ios-blue/20"
           >
             {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="text-center pt-2">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-ios-blue text-sm hover:underline"
+            className="text-ios-blue text-[15px] font-medium hover:underline transition-all"
           >
             {isSignUp ? 'Already have an account? Sign In' : 'New here? Create Account'}
           </button>
