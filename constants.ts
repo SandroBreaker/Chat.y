@@ -9,6 +9,13 @@ export const PARTNER: Profile = {
   email: 'partner@example.com'
 };
 
+export const GEMINI_BOT: Profile = {
+  id: 'gemini-bot',
+  username: 'Gemini AI ✨',
+  avatar_url: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg',
+  email: 'ai@google.com'
+};
+
 export const INITIAL_CHATS: ChatSession[] = [
   {
     id: '1',

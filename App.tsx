@@ -5,7 +5,8 @@ import { ChevronLeft, Video, Info, Phone, Mail, Search, NewMessage, Pencil, X } 
 import MessageBubble from './components/Chat/MessageBubble';
 import InputArea from './components/Chat/InputArea';
 import Auth from './components/Auth';
-import { SUGGESTED_PHOTOS } from './constants';
+import { SUGGESTED_PHOTOS, GEMINI_BOT } from './constants';
+import { GoogleGenAI } from "@google/genai";
 
 // Som de alerta (beep curto e agradável para NUDGE)
 const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -47,6 +48,17 @@ export default function App() {
   const msgAudioRef = useRef<HTMLAudioElement>(new Audio(MSG_SOUND_URL));
   const broadcastChannelRef = useRef<any>(null);
   
+  // Gemini AI Instance
+  // Nota: Em produção, keys devem estar em variaveis de ambiente ou proxy.
+  // Aqui usamos diretamente conforme solicitado, assumindo que process.env.API_KEY está disponível no build.
+  const aiRef = useRef<GoogleGenAI | null>(null);
+
+  useEffect(() => {
+    if (process.env.API_KEY) {
+      aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    }
+  }, []);
+  
   // -- Initialization & Auth --
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,7 +86,9 @@ export default function App() {
           .select('*')
           .neq('id', session.user.id);
         
-        if (contactsData) setContacts(contactsData);
+        // Inject Gemini Bot into contacts list
+        const allContacts = contactsData ? [...contactsData, GEMINI_BOT] : [GEMINI_BOT];
+        setContacts(allContacts);
 
         // 2. Fetch My Profile
         const { data: myData } = await supabase
@@ -111,6 +125,7 @@ export default function App() {
   // -- Computed Contacts (Sorted by Recent Activity) --
   const sortedContacts = useMemo(() => {
     return [...contacts].sort((a, b) => {
+      // Always put Gemini near top if interaction happened, otherwise normal sort
       const msgA = lastMessages[a.id];
       const msgB = lastMessages[b.id];
       const timeA = msgA ? new Date(msgA.created_at).getTime() : 0;
@@ -125,6 +140,7 @@ export default function App() {
 
     // Fetch history only if we have an active chat
     if (activeChatId) {
+      // If active chat is bot, we might rely on local state or fetch what is possible
       const fetchHistory = async () => {
         const { data } = await supabase
           .from('messages')
@@ -365,6 +381,58 @@ export default function App() {
     setPlayingAudioId(null);
   };
 
+  // Logic to handle Gemini Responses
+  const handleGeminiResponse = async (userMessage: string) => {
+    if (!aiRef.current || !session?.user) return;
+
+    // Simulate typing immediately
+    setTypingUsers(prev => ({ ...prev, [GEMINI_BOT.id]: true }));
+
+    try {
+      const response = await aiRef.current.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: userMessage,
+      });
+
+      const text = response.text || "Desculpe, não consegui entender.";
+
+      const botMessagePayload = {
+        content: text,
+        sender_id: GEMINI_BOT.id,
+        recipient_id: session.user.id,
+        is_read: false
+      };
+
+      // Try inserting into Supabase (Might fail due to RLS if not configured to allow inserting for other IDs)
+      // If it fails, we fall back to local state so the user sees the response.
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([botMessagePayload])
+        .select()
+        .single();
+
+      if (error) {
+        console.warn("Supabase insert blocked (likely RLS or FK), using local state for Gemini.", error);
+        // Fallback: Create a local temporary message object
+        const localMsg: Message = {
+           id: Date.now(), // Temporary ID
+           ...botMessagePayload,
+           created_at: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, localMsg]);
+        setLastMessages(prev => ({ ...prev, [GEMINI_BOT.id]: localMsg }));
+      }
+      
+      // If insert worked, the subscription will pick it up automatically.
+      
+    } catch (err) {
+      console.error("Gemini Error:", err);
+      // Optional: Send error message to chat
+    } finally {
+      setTypingUsers(prev => ({ ...prev, [GEMINI_BOT.id]: false }));
+    }
+  };
+
   const handleSendMessage = async (text: string) => {
     if (!activeChatId || !session?.user) return;
 
@@ -375,21 +443,49 @@ export default function App() {
       is_read: false
     };
     
-    // Optimistic UI updates could go here, but focusing on robustness for now
-    
+    // Attempt to insert into DB
     const { error } = await supabase
       .from('messages')
       .insert([newMessagePayload]);
 
     if (error) {
-       console.error("Failed to send", error);
-       alert("Error sending message");
+       console.error("Supabase insert error:", error);
+       
+       // Fallback for Gemini Bot: If DB fails (FK constraint), use local state
+       if (activeChatId === GEMINI_BOT.id) {
+           const localMsg: Message = {
+             id: Date.now().toString(),
+             ...newMessagePayload,
+             created_at: new Date().toISOString()
+           };
+           
+           setMessages(prev => [...prev, localMsg]);
+           setLastMessages(prev => ({ ...prev, [activeChatId]: localMsg }));
+           
+           // Trigger response
+           handleGeminiResponse(text);
+           return;
+       }
+
+       alert(`Error sending message: ${error.message || 'Unknown error'}`);
+       return;
+    }
+
+    // Success path (DB insert worked)
+    // Subscription handles UI update for sent messages
+    
+    // Check if we are talking to Gemini
+    if (activeChatId === GEMINI_BOT.id) {
+       handleGeminiResponse(text);
     }
   };
 
   const handleTyping = (isTyping: boolean) => {
     if (!activeChatId || !session?.user || !broadcastChannelRef.current) return;
     
+    // Don't broadcast typing if talking to Bot
+    if (activeChatId === GEMINI_BOT.id) return;
+
     broadcastChannelRef.current.send({
       type: 'broadcast',
       event: 'typing',
@@ -413,10 +509,17 @@ export default function App() {
       m.id === messageId ? { ...m, reactions: currentReactions } : m
     ));
 
-    await supabase
-      .from('messages')
-      .update({ reactions: currentReactions })
-      .eq('id', messageId);
+    // Only update DB if it's not a local-only Gemini message (created via fallback)
+    // Simple heuristic: real IDs are UUIDs (strings) or bigints. JS Date.now() is a large number but typically fits specific range.
+    // We try/catch to be safe.
+    if (typeof messageId === 'string' || (typeof messageId === 'number' && messageId < 1000000000000)) { 
+       try {
+          await supabase
+          .from('messages')
+          .update({ reactions: currentReactions })
+          .eq('id', messageId);
+       } catch (e) { console.log("Skipping reaction update for local message"); }
+    }
   };
 
   const handleLogout = async () => {
@@ -562,6 +665,7 @@ export default function App() {
           {sortedContacts.map(contact => {
             const lastMsg = lastMessages[contact.id];
             const isTyping = typingUsers[contact.id];
+            const isGemini = contact.id === GEMINI_BOT.id;
             
             let displayText = "Tap to start chatting";
             let displayTime = "";
@@ -584,7 +688,13 @@ export default function App() {
                 className="flex items-center gap-4 px-5 py-4 active:bg-ios-lightGray transition-colors cursor-pointer group border-b border-ios-separator ml-5 border-l-0 pl-0"
               >
                 <div className="relative shrink-0">
-                  <img src={contact.avatar_url || `https://ui-avatars.com/api/?name=${contact.username}&background=random`} alt={contact.username} className="w-14 h-14 rounded-full object-cover" />
+                  <div className={`rounded-full p-[2px] ${isGemini ? 'bg-gradient-to-tr from-blue-400 to-purple-500' : ''}`}>
+                    <img 
+                      src={contact.avatar_url || `https://ui-avatars.com/api/?name=${contact.username}&background=random`} 
+                      alt={contact.username} 
+                      className="w-14 h-14 rounded-full object-cover border border-black" 
+                    />
+                  </div>
                   {/* Presence/Typing Indicator on Avatar */}
                   {isTyping && (
                     <div className="absolute -bottom-1 -right-1 bg-ios-gray rounded-full p-1 border border-black">
@@ -601,6 +711,7 @@ export default function App() {
                   <div className="flex justify-between items-baseline mb-1.5">
                     <h3 className="text-white font-semibold text-[17px] truncate flex items-center gap-1">
                       {contact.username}
+                      {isGemini && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded ml-1 border border-blue-500/30">AI</span>}
                     </h3>
                     <span className="text-ios-textSecondary text-[15px]">{displayTime}</span>
                   </div>
@@ -625,6 +736,7 @@ export default function App() {
     if (!activeProfile) return null;
     
     const isPartnerTyping = typingUsers[activeProfile.id];
+    const isGemini = activeProfile.id === GEMINI_BOT.id;
 
     return (
       <div className="flex flex-col h-full bg-ios-black relative">
@@ -641,8 +753,8 @@ export default function App() {
             className="flex flex-col items-center cursor-pointer"
             onClick={() => setScreen('info')}
           >
-            <div className="relative">
-               <img src={activeProfile.avatar_url} alt="Avatar" className="w-9 h-9 rounded-full object-cover mb-0.5" />
+            <div className={`relative rounded-full p-[2px] ${isGemini ? 'bg-gradient-to-tr from-blue-400 to-purple-500' : ''}`}>
+               <img src={activeProfile.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-black" />
             </div>
             <span className="text-[11px] text-white font-medium flex items-center gap-0.5 mt-0.5">
                {activeProfile.username} <span className="text-[8px] opacity-60">›</span>
@@ -658,7 +770,9 @@ export default function App() {
           {messages.length === 0 && (
              <div className="h-full flex flex-col items-center justify-center opacity-50">
                <img src={activeProfile.avatar_url} className="w-20 h-20 rounded-full grayscale mb-4 opacity-50" alt="" />
-               <div className="text-center text-ios-textSecondary text-sm">No messages yet with {activeProfile.username}</div>
+               <div className="text-center text-ios-textSecondary text-sm">
+                 {isGemini ? 'Ask Gemini anything...' : `No messages yet with ${activeProfile.username}`}
+               </div>
              </div>
           )}
           
