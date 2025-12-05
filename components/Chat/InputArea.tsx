@@ -90,7 +90,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, onTyping }) => {
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
     const fileName = `img_${Date.now()}.${fileExt}`;
-    const fileName = `img_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     setUploading(true);
