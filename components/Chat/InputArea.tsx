@@ -57,8 +57,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       }
 
       const { data } = supabase.storage.from('files_chat.y').getPublicUrl(filePath);
-      
-      // Send as a specially formatted string that MessageBubble will parse
       onSendMessage(`[IMAGE]${data.publicUrl}`);
     } catch (error: any) {
       console.error('Error uploading image:', error);
@@ -76,8 +74,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Detect supported mime type (iOS requires audio/mp4, others prefer audio/webm)
       const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
         ? 'audio/mp4' 
         : 'audio/webm';
@@ -94,7 +90,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const fileExt = mimeType.split('/')[1]; // mp4 or webm
+        const fileExt = mimeType.split('/')[1]; 
         const fileName = `audio_${Date.now()}.${fileExt}`;
         
         setUploading(true);
@@ -112,7 +108,6 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           alert(`Error sending audio: ${error.message}`);
         } finally {
           setUploading(false);
-          // Stop all tracks to release mic
           stream.getTracks().forEach(track => track.stop());
         }
       };
@@ -142,11 +137,11 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         className="hidden" 
       />
 
-      {/* Input Bar - z-50 to stay on top of the sheet */}
+      {/* Input Bar - Reduced vertical padding slightly to tighten the look */}
       <div className="relative z-50 bg-ios-gray/90 backdrop-blur-xl border-t border-ios-separator pb-safe transition-all duration-300 ease-ios">
-        <div className="flex items-center gap-3 px-3 py-3">
+        <div className="flex items-center gap-3 px-3 py-2">
           <button 
-            className={`p-2.5 rounded-full bg-ios-lightGray text-ios-textSecondary transition-all duration-300 ease-ios active:scale-95 ${isMediaSheetOpen ? 'rotate-45 bg-ios-blue text-white' : ''}`}
+            className={`p-2 rounded-full bg-ios-lightGray text-ios-textSecondary transition-all duration-300 ease-ios active:scale-95 ${isMediaSheetOpen ? 'rotate-45 bg-ios-blue text-white' : ''}`}
             onClick={() => setIsMediaSheetOpen(!isMediaSheetOpen)}
             disabled={isRecording}
           >
@@ -155,7 +150,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
           <div className="flex-1 relative">
              {isRecording ? (
-               <div className="w-full bg-red-500/10 border border-red-500/30 rounded-full py-2.5 px-5 flex items-center justify-between text-red-500 animate-pulse-slow">
+               <div className="w-full bg-red-500/10 border border-red-500/30 rounded-full py-2 px-4 flex items-center justify-between text-red-500 animate-pulse-slow">
                  <span className="text-[15px] font-medium flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                     Recording...
@@ -163,7 +158,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                  <button onClick={stopRecording} className="text-xs font-bold bg-red-500 text-white px-3 py-1 rounded-full">STOP</button>
                </div>
              ) : uploading ? (
-                <div className="w-full bg-ios-lightGray border border-ios-separator rounded-full py-2.5 px-5 text-ios-textSecondary text-center text-sm italic animate-pulse">
+                <div className="w-full bg-ios-lightGray border border-ios-separator rounded-full py-2 px-5 text-ios-textSecondary text-center text-sm italic animate-pulse">
                   Uploading media...
                 </div>
              ) : (
@@ -174,7 +169,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="iMessage"
-                  className="w-full bg-black border border-ios-separator rounded-full py-2.5 px-5 text-white placeholder-ios-textSecondary focus:outline-none focus:border-ios-blue transition-colors duration-300 text-[17px]"
+                  className="w-full bg-black border border-ios-separator rounded-full py-2 px-4 text-white placeholder-ios-textSecondary focus:outline-none focus:border-ios-blue transition-colors duration-300 text-[17px]"
                 />
              )}
           </div>
@@ -182,13 +177,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           {text.trim() ? (
              <button 
              onClick={handleSend}
-             className="p-2.5 rounded-full bg-ios-blue text-white animate-scale-press shadow-lg transition-transform"
+             className="p-2 rounded-full bg-ios-blue text-white animate-scale-press shadow-lg transition-transform"
            >
              <Send />
            </button>
           ) : (
             <button 
-              className={`p-2.5 transition-all duration-200 ${isRecording ? 'text-red-500 scale-110' : 'text-ios-textSecondary hover:text-white'}`}
+              className={`p-2 transition-all duration-200 ${isRecording ? 'text-red-500 scale-110' : 'text-ios-textSecondary hover:text-white'}`}
               onClick={isRecording ? stopRecording : startRecording}
             >
               <Mic />
@@ -198,7 +193,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         </div>
       </div>
 
-      {/* Media Sheet - Absolute positioning relative to the chat container */}
+      {/* Media Sheet */}
       <div 
         className={`
           absolute bottom-0 left-0 right-0 bg-ios-gray z-40 transition-transform duration-500 ease-ios-spring border-t border-ios-separator rounded-t-2xl shadow-2xl
@@ -262,11 +257,10 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         </div>
       </div>
       
-      {/* Overlay to close sheet when clicking outside */}
       {isMediaSheetOpen && (
         <div 
           className="absolute inset-0 z-30 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300" 
-          style={{ bottom: '320px', top: '-1000px' }} // Extend top to cover chat
+          style={{ bottom: '320px', top: '-1000px' }} 
           onClick={() => setIsMediaSheetOpen(false)}
         />
       )}

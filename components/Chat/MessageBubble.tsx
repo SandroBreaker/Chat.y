@@ -5,31 +5,29 @@ import { Play, Pause, Bell } from '../Icons';
 interface MessageBubbleProps {
   message: Message;
   currentUserId: string;
-  onOpenContext: (messageId: number) => void;
+  onOpenContext: (messageId: number, rect: DOMRect) => void;
   isContextActive: boolean;
-  closeContext: () => void;
   onReaction: (messageId: number, emoji: string) => void;
 }
-
-const REACTIONS = ["❤️", "👍", "👎", "😂", "❓", "‼️"];
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ 
   message, 
   currentUserId, 
   onOpenContext, 
   isContextActive, 
-  closeContext,
   onReaction
 }) => {
   const isMe = message.sender_id === currentUserId;
+  const bubbleRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
-    // For simplicity using onClick in parent, but preventing default for context
     if (e.type === 'contextmenu') {
        e.preventDefault();
-       onOpenContext(message.id);
+       if (bubbleRef.current) {
+         onOpenContext(message.id, bubbleRef.current.getBoundingClientRect());
+       }
     }
   };
   
@@ -50,7 +48,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        // Reset all other audios if needed, for now just play
         audioRef.current.play();
       }
       setIsPlaying(!isPlaying);
@@ -114,29 +111,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div className={`relative mb-6 flex ${isMe ? 'justify-end' : 'justify-start'} group animate-message-pop`}>
-      {/* Backdrop for Context Menu */}
-      {isContextActive && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-ios"
-          onClick={(e) => { e.stopPropagation(); closeContext(); }} 
-        />
-      )}
-
+      
       {/* Message Content */}
       <div 
+        ref={bubbleRef}
         className={`
           relative z-30 max-w-[75%] 
           ${isImage ? 'p-1' : 'px-4 py-2'}
           ${isNudge ? 'border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : ''}
           rounded-2xl text-[17px] leading-snug cursor-pointer transition-all duration-300 ease-ios
           ${isMe ? 'bg-ios-bubbleSent text-white rounded-br-none' : 'bg-ios-bubbleReceived text-white rounded-bl-none'}
-          ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
+          ${isContextActive ? 'scale-[1.02] shadow-2xl brightness-110' : 'active:scale-95'}
         `}
         onContextMenu={handleLongPress}
-        onClick={() => !isAudio && onOpenContext(message.id)}
-        style={{
-          boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : undefined
-        }}
+        onClick={() => !isAudio && bubbleRef.current && onOpenContext(message.id, bubbleRef.current.getBoundingClientRect())}
       >
         {renderContent()}
 
@@ -155,46 +143,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
       </div>
-
-      {/* Context Menu Overlay */}
-      {isContextActive && (
-        <div className={`absolute z-50 flex flex-col gap-2 ${isMe ? 'items-end right-0' : 'items-start left-0'} -top-16 min-w-[240px]`}>
-          
-          <div className="bg-ios-gray p-2 rounded-full flex gap-3 shadow-lg border border-ios-separator animate-slide-up justify-between px-4 origin-bottom">
-            {REACTIONS.map(emoji => (
-              <button 
-                key={emoji} 
-                className="hover:scale-125 transition-transform duration-200 ease-ios-spring text-2xl active:scale-95"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onReaction(message.id, emoji);
-                  closeContext();
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-ios-gray/90 backdrop-blur-xl rounded-xl overflow-hidden shadow-2xl border border-ios-separator w-48 mt-2 animate-slide-up origin-top duration-300">
-            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
-              Reply <span className="opacity-50 text-sm">↩️</span>
-            </button>
-            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
-              Copy <span className="opacity-50 text-sm">📄</span>
-            </button>
-            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
-              Forward <span className="opacity-50 text-sm">➡️</span>
-            </button>
-            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
-              Star <span className="opacity-50 text-sm">⭐</span>
-            </button>
-            <button className="w-full text-left px-4 py-3 text-red-500 hover:bg-ios-lightGray flex justify-between items-center transition-colors">
-              Report <span className="opacity-50 text-sm">⚠️</span>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
