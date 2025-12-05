@@ -5,9 +5,10 @@ import { supabase } from '../../supabaseClient';
 
 interface InputAreaProps {
   onSendMessage: (text: string) => void;
+  onTyping?: (isTyping: boolean) => void;
 }
 
-const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
+const InputArea: React.FC<InputAreaProps> = ({ onSendMessage, onTyping }) => {
   const [text, setText] = useState('');
   const [isMediaSheetOpen, setIsMediaSheetOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -18,6 +19,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup on unmount to prevent memory leaks with microphone stream
   useEffect(() => {
@@ -25,14 +27,43 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(track => track.stop());
         }
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
     };
   }, []);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setText(e.target.value);
+
+    // Typing Indicator Logic
+    if (onTyping) {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      } else {
+        onTyping(true); // Start typing
+      }
+
+      // Stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        onTyping(false);
+        typingTimeoutRef.current = null;
+      }, 2000);
+    }
+  };
 
   const handleSend = () => {
     if (text.trim()) {
       onSendMessage(text);
       setText('');
       inputRef.current?.focus();
+      
+      // Clear typing immediately on send
+      if (onTyping && typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+        onTyping(false);
+      }
     }
   };
 
@@ -58,6 +89,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
+    const fileName = `img_${Date.now()}.${fileExt}`;
     const fileName = `img_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
@@ -191,7 +223,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                   ref={inputRef}
                   type="text"
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
                   onFocus={handleFocus}
                   placeholder="iMessage"

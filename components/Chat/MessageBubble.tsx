@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   onReaction: (messageId: number | string, emoji: string) => void;
   currentlyPlayingId: number | string | null;
   setCurrentlyPlayingId: (id: number | string | null) => void;
+  onImageClick?: (url: string) => void;
 }
 
 const REACTIONS = ["❤️", "👍", "👎", "😂", "❓", "‼️"];
@@ -23,7 +24,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   closeContext,
   onReaction,
   currentlyPlayingId,
-  setCurrentlyPlayingId
+  setCurrentlyPlayingId,
+  onImageClick
 }) => {
   const isMe = message.sender_id === currentUserId;
   const isPlaying = currentlyPlayingId === message.id;
@@ -82,8 +84,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <img 
           src={cleanContent} 
           alt="Shared" 
-          className="rounded-lg max-w-full h-auto object-cover min-w-[150px] min-h-[150px]"
+          className="rounded-lg max-w-full h-auto object-cover min-w-[150px] min-h-[150px] cursor-zoom-in"
           loading="lazy"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onImageClick) onImageClick(cleanContent);
+          }}
         />
       );
     }
@@ -140,7 +146,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
         `}
         onContextMenu={handleLongPress}
-        onClick={() => !isAudio && onOpenContext(message.id)}
+        onClick={() => !isAudio && !isImage && onOpenContext(message.id)}
         style={{
           boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : undefined
         }}

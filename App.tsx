@@ -26,6 +26,7 @@ export default function App() {
   // UI States
   const [activeContextMenu, setActiveContextMenu] = useState<number | string | null>(null);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   
   // Audio State (Single Source of Truth)
   const [playingAudioId, setPlayingAudioId] = useState<number | string | null>(null);
@@ -35,11 +36,16 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [editName, setEditName] = useState('');
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+
+  // New Features States
+  const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const alertAudioRef = useRef<HTMLAudioElement>(new Audio(ALERT_SOUND_URL));
   const msgAudioRef = useRef<HTMLAudioElement>(new Audio(MSG_SOUND_URL));
+  const broadcastChannelRef = useRef<any>(null);
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -113,7 +119,7 @@ export default function App() {
     });
   }, [contacts, lastMessages]);
 
-  // -- Fetch & Subscribe Messages --
+  // -- Fetch & Subscribe Messages & Presence --
   useEffect(() => {
     if (!session?.user) return;
 
@@ -131,7 +137,7 @@ export default function App() {
       fetchHistory();
     }
 
-    // Subscribe to Realtime
+    // Subscribe to DB Changes
     const channel = supabase
       .channel(`global_messages:${session.user.id}`)
       .on(
@@ -162,6 +168,10 @@ export default function App() {
                 if (newMessage.content === '[NUDGE]') {
                   playSound(alertAudioRef.current);
                   if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+                  
+                  // Trigger Shake Animation
+                  setIsShaking(true);
+                  setTimeout(() => setIsShaking(false), 600);
                 } else {
                   playSound(msgAudioRef.current);
                 }
@@ -182,6 +192,8 @@ export default function App() {
                 // If chat active, append
                 if (activeChatId === newMessage.sender_id) {
                    setMessages(prev => [...prev, newMessage]);
+                   // Also clear typing indicator for this user when they send a message
+                   setTypingUsers(prev => ({ ...prev, [newMessage.sender_id]: false }));
                 }
              }
            } else if (payload.eventType === 'UPDATE') {
@@ -224,8 +236,27 @@ export default function App() {
       )
       .subscribe();
 
+    // --- Typing Indicators (Broadcast Channel) ---
+    // Use a shared channel for signaling typing status
+    const signalChannel = supabase.channel('global_signaling');
+    
+    signalChannel
+      .on(
+        'broadcast',
+        { event: 'typing' },
+        ({ payload }: { payload: { from: string, to: string, isTyping: boolean } }) => {
+          if (payload.to === session.user.id) {
+             setTypingUsers(prev => ({ ...prev, [payload.from]: payload.isTyping }));
+          }
+        }
+      )
+      .subscribe();
+
+    broadcastChannelRef.current = signalChannel;
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(signalChannel);
     };
   }, [activeChatId, session, contacts]); 
 
@@ -262,7 +293,7 @@ export default function App() {
         }
       };
     }
-  }, [screen, messages]);
+  }, [screen, messages, typingUsers]); // Re-scroll when typing indicator appears
 
   // -- Profile Update Handlers --
   const openEditProfile = (profile: Profile) => {
@@ -344,6 +375,8 @@ export default function App() {
       is_read: false
     };
     
+    // Optimistic UI updates could go here, but focusing on robustness for now
+    
     const { error } = await supabase
       .from('messages')
       .insert([newMessagePayload]);
@@ -352,6 +385,20 @@ export default function App() {
        console.error("Failed to send", error);
        alert("Error sending message");
     }
+  };
+
+  const handleTyping = (isTyping: boolean) => {
+    if (!activeChatId || !session?.user || !broadcastChannelRef.current) return;
+    
+    broadcastChannelRef.current.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { 
+        from: session.user.id, 
+        to: activeChatId,
+        isTyping 
+      }
+    });
   };
 
   const handleReaction = async (messageId: number | string, emoji: string) => {
@@ -448,8 +495,26 @@ export default function App() {
     )
   );
 
+  const renderLightbox = () => {
+    if (!lightboxImage) return null;
+    return (
+      <div 
+        className="fixed inset-0 z-[60] bg-black flex items-center justify-center animate-fade-in"
+        onClick={() => setLightboxImage(null)}
+      >
+         <button className="absolute top-safe right-4 p-4 text-white opacity-70 z-10">
+            <X />
+         </button>
+         <img 
+           src={lightboxImage} 
+           className="max-w-full max-h-full object-contain pointer-events-none" 
+           alt="Fullscreen" 
+         />
+      </div>
+    );
+  };
+
   const renderHomeScreen = () => (
-    // Updated: Changed animate-slide-in-right to animate-slide-in-left to simulate "Back" or "Root" view
     <div className="flex flex-col h-full bg-ios-black animate-slide-in-left">
       <div className="flex-none bg-ios-gray/90 backdrop-blur-md z-10 border-b border-ios-separator pt-safe">
         <header className="px-5 py-4 flex justify-between items-center">
@@ -496,11 +561,15 @@ export default function App() {
         <div className="pt-2">
           {sortedContacts.map(contact => {
             const lastMsg = lastMessages[contact.id];
+            const isTyping = typingUsers[contact.id];
+            
             let displayText = "Tap to start chatting";
             let displayTime = "";
             let isMedia = false;
 
-            if (lastMsg) {
+            if (isTyping) {
+               displayText = "Typing...";
+            } else if (lastMsg) {
                 if (lastMsg.content.startsWith('[IMAGE]')) { displayText = '📷 Photo'; isMedia = true; }
                 else if (lastMsg.content.startsWith('[AUDIO]')) { displayText = '🎤 Audio'; isMedia = true; }
                 else if (lastMsg.content === '[NUDGE]') { displayText = '🔔 Nudge'; isMedia = true; }
@@ -516,6 +585,16 @@ export default function App() {
               >
                 <div className="relative shrink-0">
                   <img src={contact.avatar_url || `https://ui-avatars.com/api/?name=${contact.username}&background=random`} alt={contact.username} className="w-14 h-14 rounded-full object-cover" />
+                  {/* Presence/Typing Indicator on Avatar */}
+                  {isTyping && (
+                    <div className="absolute -bottom-1 -right-1 bg-ios-gray rounded-full p-1 border border-black">
+                       <div className="flex gap-0.5">
+                          <span className="w-1 h-1 bg-ios-blue rounded-full animate-bounce"></span>
+                          <span className="w-1 h-1 bg-ios-blue rounded-full animate-bounce animation-delay-200"></span>
+                          <span className="w-1 h-1 bg-ios-blue rounded-full animate-bounce animation-delay-400"></span>
+                       </div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex-1 min-w-0 pr-4">
@@ -525,7 +604,7 @@ export default function App() {
                     </h3>
                     <span className="text-ios-textSecondary text-[15px]">{displayTime}</span>
                   </div>
-                  <p className={`text-[15px] truncate leading-snug ${isMedia ? 'text-white/80 italic' : 'text-ios-textSecondary'}`}>
+                  <p className={`text-[15px] truncate leading-snug ${isTyping ? 'text-ios-blue font-medium italic' : isMedia ? 'text-white/80 italic' : 'text-ios-textSecondary'}`}>
                     {displayText}
                   </p>
                 </div>
@@ -544,8 +623,9 @@ export default function App() {
   const renderChatScreen = () => {
     const activeProfile = getActiveProfile();
     if (!activeProfile) return null;
+    
+    const isPartnerTyping = typingUsers[activeProfile.id];
 
-    // NO ANIMATION CLASS HERE to prevent scroll jumping and keyboard issues
     return (
       <div className="flex flex-col h-full bg-ios-black relative">
         <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe">
@@ -593,13 +673,26 @@ export default function App() {
               onReaction={handleReaction}
               currentlyPlayingId={playingAudioId}
               setCurrentlyPlayingId={setPlayingAudioId}
+              onImageClick={setLightboxImage}
             />
           ))}
+
+          {/* Typing Indicator Bubble */}
+          {isPartnerTyping && (
+             <div className="flex justify-start mb-6 animate-slide-up">
+                <div className="bg-ios-bubbleReceived rounded-2xl rounded-bl-none px-4 py-3 flex items-center gap-1.5 w-16 h-10">
+                   <div className="w-2 h-2 bg-ios-textSecondary rounded-full animate-bounce"></div>
+                   <div className="w-2 h-2 bg-ios-textSecondary rounded-full animate-bounce animation-delay-200"></div>
+                   <div className="w-2 h-2 bg-ios-textSecondary rounded-full animate-bounce animation-delay-400"></div>
+                </div>
+             </div>
+          )}
+          
           <div ref={messagesEndRef} className="h-2" />
         </div>
 
         <div className="shrink-0 z-30">
-           <InputArea onSendMessage={handleSendMessage} />
+           <InputArea onSendMessage={handleSendMessage} onTyping={handleTyping} />
         </div>
       </div>
     );
@@ -718,13 +811,14 @@ export default function App() {
   );
 
   return (
-    // Changed h-[100dvh] to h-full to respect visual viewport resizing (keyboard)
-    <div className="max-w-md mx-auto h-full relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col">
+    // Applied Shake Animation class dynamically
+    <div className={`max-w-md mx-auto h-full relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col ${isShaking ? 'animate-shake' : ''}`}>
       {screen === 'home' && renderHomeScreen()}
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}
       {renderNewMessageModal()}
       {renderEditProfileModal()}
+      {renderLightbox()}
     </div>
   );
 }
