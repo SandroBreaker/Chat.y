@@ -545,9 +545,9 @@ export default function App() {
     const activeProfile = getActiveProfile();
     if (!activeProfile) return null;
 
-    // Added animate-slide-in-chat for fluid opening transition (50% slower than standard)
+    // NO ANIMATION CLASS HERE to prevent scroll jumping and keyboard issues
     return (
-      <div className="flex flex-col h-full bg-ios-black relative animate-slide-in-chat">
+      <div className="flex flex-col h-full bg-ios-black relative">
         <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe">
           <button 
             onClick={() => { setScreen('home'); setPlayingAudioId(null); }}
