@@ -40,6 +40,7 @@ export default function App() {
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const alertAudioRef = useRef<HTMLAudioElement>(new Audio(ALERT_SOUND_URL));
   const msgAudioRef = useRef<HTMLAudioElement>(new Audio(MSG_SOUND_URL));
+  const appContainerRef = useRef<HTMLDivElement>(null);
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -291,42 +292,54 @@ export default function App() {
   // -- Renders --
 
   const renderContextMenuOverlay = () => {
-    if (!contextMenuData || !session?.user) return null;
+    if (!contextMenuData || !session?.user || !appContainerRef.current) return null;
     const { rect, message } = contextMenuData;
     const isMe = message.sender_id === session.user.id;
     
-    // Determine position: if close to top (< 200px), show menu below. Else show above.
-    const showBelow = rect.top < 200;
+    // Calcula posição relativa ao container do App (não à janela)
+    const containerRect = appContainerRef.current.getBoundingClientRect();
+    const relativeTop = rect.top - containerRect.top;
+    const relativeLeft = rect.left - containerRect.left;
+
+    // Decide se mostra em cima ou embaixo baseado no espaço no container
+    // Se a mensagem estiver no terço superior, mostra embaixo. Caso contrário, em cima.
+    const showBelow = relativeTop < (containerRect.height / 3);
     
-    // Calculate Menu Position
+    // Estilo do Menu (posicionado absolutamente dentro do container)
     const menuStyle: React.CSSProperties = {
-      position: 'fixed',
-      left: isMe ? 'auto' : rect.left,
-      right: isMe ? (window.innerWidth - rect.right) : 'auto',
-      top: showBelow ? rect.bottom + 8 : 'auto',
-      bottom: showBelow ? 'auto' : (window.innerHeight - rect.top) + 8,
-      zIndex: 100, // Above everything
+      position: 'absolute',
+      zIndex: 100,
+      minWidth: '220px',
+      maxWidth: '280px',
+      // Se for eu, alinhar à direita. Se for outro, alinhar à esquerda (relativo ao balão)
+      ...(isMe ? { right: (containerRect.width - (relativeLeft + rect.width)) } : { left: relativeLeft }),
+      // Posição Vertical
+      ...(showBelow ? { top: relativeTop + rect.height + 8 } : { bottom: (containerRect.height - relativeTop) + 8 }),
+    };
+
+    // Estilo do clone do balão (para referência visual)
+    const cloneStyle: React.CSSProperties = {
+        position: 'absolute',
+        top: relativeTop,
+        left: relativeLeft,
+        width: rect.width,
+        height: rect.height,
+        zIndex: 91
     };
 
     return (
       <div 
-        className="fixed inset-0 z-[90] flex flex-col"
+        className="absolute inset-0 z-[90] overflow-hidden"
         onClick={() => setContextMenuData(null)}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
         
-        {/* Render a clone of the message bubble for visual reference */}
-        <div 
-           className="absolute z-[91] pointer-events-none"
-           style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
-        >
-          {/* Transparent placeholder just to keep space if needed, 
-              but mostly we just use the calculated menu position */}
-        </div>
+        {/* Clone do balão para efeito visual de foco */}
+        <div style={cloneStyle} className="pointer-events-none" />
 
-        {/* The Menu */}
+        {/* O Menu */}
         <div 
-          className={`flex flex-col gap-2 min-w-[220px] max-w-[280px] animate-scale-press origin-${showBelow ? 'top' : 'bottom'}`}
+          className={`flex flex-col gap-2 animate-scale-press origin-${showBelow ? 'top' : 'bottom'}`}
           style={menuStyle}
           onClick={(e) => e.stopPropagation()}
         >
@@ -580,7 +593,7 @@ export default function App() {
   }
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col transition-all duration-300 ease-ios-spring">
+    <div ref={appContainerRef} className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col transition-all duration-300 ease-ios-spring">
       {screen === 'home' && renderHomeScreen()}
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}
