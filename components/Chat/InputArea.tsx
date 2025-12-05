@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Mic, Send, Camera } from '../Icons';
+import { Plus, Mic, Send, Camera, Bell } from '../Icons';
 import { SUGGESTED_PHOTOS } from '../../constants';
 import { supabase } from '../../supabaseClient';
 
@@ -28,6 +28,11 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSend();
+  };
+
+  const handleSendNudge = () => {
+    onSendMessage('[NUDGE]');
+    setIsMediaSheetOpen(false);
   };
 
   // --- Image Upload Logic ---
@@ -203,24 +208,33 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       >
         <div className="p-5 h-full overflow-y-auto no-scrollbar">
           <div className="flex justify-between items-center mb-5">
-            <h3 className="text-white font-semibold text-xl">Photos</h3>
+            <h3 className="text-white font-semibold text-xl">Apps & Media</h3>
             <button className="text-ios-blue text-[17px]" onClick={triggerFileSelect}>All Photos</button>
           </div>
           
-          <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="grid grid-cols-4 gap-4 mb-6">
             <button 
               onClick={triggerFileSelect}
-              className="aspect-square bg-ios-lightGray rounded-xl flex flex-col items-center justify-center text-ios-textSecondary hover:bg-ios-separator transition-colors active:scale-95"
+              className="aspect-square bg-ios-lightGray rounded-xl flex flex-col items-center justify-center text-ios-textSecondary hover:bg-ios-separator transition-colors active:scale-95 col-span-1"
             >
               <Camera />
-              <span className="text-xs mt-2 font-medium">Camera</span>
+              <span className="text-[10px] mt-2 font-medium">Camera</span>
             </button>
-            {SUGGESTED_PHOTOS.map((url, idx) => (
+            
+            <button 
+              onClick={handleSendNudge}
+              className="aspect-square bg-ios-lightGray/50 border border-yellow-500/30 rounded-xl flex flex-col items-center justify-center text-yellow-500 hover:bg-yellow-900/20 transition-colors active:scale-95 col-span-1"
+            >
+              <Bell />
+              <span className="text-[10px] mt-2 font-medium text-center leading-tight">Chamar<br/>Atenção</span>
+            </button>
+
+            {SUGGESTED_PHOTOS.slice(0, 2).map((url, idx) => (
               <img 
                 key={idx} 
                 src={url} 
                 alt="Recent" 
-                className="aspect-square object-cover rounded-xl cursor-pointer hover:opacity-80 transition-opacity active:scale-95"
+                className="aspect-square object-cover rounded-xl cursor-pointer hover:opacity-80 transition-opacity active:scale-95 col-span-1"
                 onClick={() => {
                   onSendMessage(`[IMAGE]${url}`); 
                   setIsMediaSheetOpen(false);
@@ -230,10 +244,18 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
           </div>
 
           <div className="space-y-2">
-             <div className="text-ios-textSecondary text-xs uppercase font-bold tracking-wider mb-3">Apps</div>
+             <div className="text-ios-textSecondary text-xs uppercase font-bold tracking-wider mb-3">Suggested Photos</div>
              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
-                {[1,2,3,4,5].map(i => (
-                  <div key={i} className="flex-shrink-0 w-16 h-16 bg-ios-lightGray rounded-2xl animate-pulse"></div>
+                {SUGGESTED_PHOTOS.map((url, i) => (
+                  <img 
+                    key={i}
+                    src={url} 
+                    className="flex-shrink-0 w-20 h-20 rounded-xl object-cover active:scale-95 transition-transform"
+                    onClick={() => {
+                        onSendMessage(`[IMAGE]${url}`); 
+                        setIsMediaSheetOpen(false);
+                      }}
+                  />
                 ))}
              </div>
           </div>

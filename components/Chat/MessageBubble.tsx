@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Message } from '../../types';
-import { Play, Pause } from '../Icons';
+import { Play, Pause, Bell } from '../Icons';
 
 interface MessageBubbleProps {
   message: Message;
@@ -36,6 +36,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   // Detect content type hacks
   const isImage = message.content.startsWith('[IMAGE]');
   const isAudio = message.content.startsWith('[AUDIO]');
+  const isNudge = message.content === '[NUDGE]';
   
   const cleanContent = isImage 
     ? message.content.replace('[IMAGE]', '') 
@@ -57,6 +58,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const renderContent = () => {
+    if (isNudge) {
+      return (
+        <div className="flex items-center gap-2 px-2 py-1 font-semibold text-yellow-400">
+           <Bell />
+           <span className="italic">Chamou sua atenção!</span>
+        </div>
+      );
+    }
+
     if (isImage) {
       return (
         <img 
@@ -117,6 +127,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         className={`
           relative z-30 max-w-[75%] 
           ${isImage ? 'p-1' : 'px-4 py-2'}
+          ${isNudge ? 'border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : ''}
           rounded-2xl text-[17px] leading-snug cursor-pointer transition-transform duration-200
           ${isMe ? 'bg-ios-bubbleSent text-white rounded-br-none' : 'bg-ios-bubbleReceived text-white rounded-bl-none'}
           ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
@@ -124,7 +135,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         onContextMenu={handleLongPress}
         onClick={() => !isAudio && onOpenContext(message.id)}
         style={{
-          boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : 'none'
+          boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : undefined
         }}
       >
         {renderContent()}

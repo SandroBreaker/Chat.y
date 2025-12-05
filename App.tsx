@@ -7,6 +7,9 @@ import InputArea from './components/Chat/InputArea';
 import Auth from './components/Auth';
 import { SUGGESTED_PHOTOS } from './constants';
 
+// Som de alerta (beep curto e agradável)
+const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [screen, setScreen] = useState<ScreenType>('home');
@@ -27,6 +30,7 @@ export default function App() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
+  const alertAudioRef = useRef<HTMLAudioElement>(new Audio(ALERT_SOUND_URL));
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -94,8 +98,19 @@ export default function App() {
         },
         (payload) => {
            if (payload.eventType === 'INSERT') {
-             if (payload.new.sender_id === activeChatId) {
-                setMessages(prev => [...prev, payload.new as Message]);
+             const newMessage = payload.new as Message;
+             
+             // Check for Nudge/Attention Call
+             if (newMessage.sender_id === activeChatId) {
+                if (newMessage.content === '[NUDGE]') {
+                  // Play sound
+                  alertAudioRef.current.play().catch(e => console.log("Audio autoplay blocked", e));
+                  // Vibrate: Buzz-Pause-Buzz
+                  if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200, 100, 500]);
+                  }
+                }
+                setMessages(prev => [...prev, newMessage]);
              }
            } else if (payload.eventType === 'UPDATE') {
              setMessages(prev => prev.map(msg => 
