@@ -1,5 +1,5 @@
 {
-  "name": "Amour Message",
+  "name": "Chat.y_msg",
   "description": "A premium, iOS-styled dark mode messaging application designed for couples.",
   "requestFramePermissions": [
     "camera",
