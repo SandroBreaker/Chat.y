@@ -405,7 +405,7 @@ export default function App() {
 
   const renderEditProfileModal = () => (
     isEditProfileOpen && editingProfile && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
         <div className="bg-ios-gray w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-scale-press">
            <div className="p-4 border-b border-ios-separator flex justify-between items-center bg-ios-lightGray/30">
               <button onClick={() => setIsEditProfileOpen(false)}><X /></button>
@@ -449,7 +449,8 @@ export default function App() {
   );
 
   const renderHomeScreen = () => (
-    <div className="flex flex-col h-full bg-ios-black animate-slide-in-right">
+    // Updated: Changed animate-slide-in-right to animate-slide-in-left to simulate "Back" or "Root" view
+    <div className="flex flex-col h-full bg-ios-black animate-slide-in-left">
       <div className="flex-none bg-ios-gray/90 backdrop-blur-md z-10 border-b border-ios-separator pt-safe">
         <header className="px-5 py-4 flex justify-between items-center">
           <button className="text-red-500 text-[17px] font-medium" onClick={handleLogout}>Sign Out</button>
@@ -544,6 +545,7 @@ export default function App() {
     const activeProfile = getActiveProfile();
     if (!activeProfile) return null;
 
+    // NO ANIMATION CLASS HERE to prevent scroll jumping and keyboard issues
     return (
       <div className="flex flex-col h-full bg-ios-black relative">
         <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe">
@@ -607,6 +609,7 @@ export default function App() {
     const activeProfile = getActiveProfile();
     if (!activeProfile) return null;
 
+    // Maintained animate-slide-in-right for drilling down into details
     return (
       <div className="flex flex-col h-full bg-black animate-slide-in-right">
          <header className="flex-none px-4 py-3 flex justify-between items-center bg-transparent z-10 pt-safe">

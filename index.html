@@ -31,8 +31,10 @@
             animation: {
               'slide-up': 'slideUp 0.3s ease-out forwards',
               'slide-in-right': 'slideInRight 0.3s ease-out forwards',
+              'slide-in-left': 'slideInLeft 0.3s ease-out forwards',
               'scale-press': 'scalePress 0.1s ease-out forwards',
               'pulse-slow': 'pulseSlow 2s infinite',
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
             },
             keyframes: {
               slideUp: {
@@ -43,6 +45,10 @@
                 '0%': { transform: 'translateX(100%)' },
                 '100%': { transform: 'translateX(0)' },
               },
+              slideInLeft: {
+                '0%': { transform: 'translateX(-30%)', opacity: '0.5' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
               scalePress: {
                 '0%': { transform: 'scale(1)' },
                 '100%': { transform: 'scale(0.95)' },
@@ -50,6 +56,10 @@
               pulseSlow: {
                 '0%, 100%': { opacity: '1' },
                 '50%': { opacity: '0.5' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               }
             }
           }
