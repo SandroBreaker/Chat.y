@@ -7,8 +7,10 @@ import InputArea from './components/Chat/InputArea';
 import Auth from './components/Auth';
 import { SUGGESTED_PHOTOS } from './constants';
 
-// Som de alerta (beep curto e agradável)
+// Som de alerta (beep curto e agradável para NUDGE)
 const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+// Som de mensagem normal (pop suave estilo iOS)
+const MSG_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3";
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -31,6 +33,7 @@ export default function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const alertAudioRef = useRef<HTMLAudioElement>(new Audio(ALERT_SOUND_URL));
+  const msgAudioRef = useRef<HTMLAudioElement>(new Audio(MSG_SOUND_URL));
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -41,6 +44,11 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+
+    // Request Notification Permission on load
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
 
     return () => subscription.unsubscribe();
   }, []);
@@ -72,22 +80,24 @@ export default function App() {
 
   // -- Fetch & Subscribe Messages --
   useEffect(() => {
-    if (!session?.user || !activeChatId) return;
+    if (!session?.user) return; // Keep subscription active even if no active chat to get notifications
 
-    const fetchHistory = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${session.user.id},recipient_id.eq.${activeChatId}),and(sender_id.eq.${activeChatId},recipient_id.eq.${session.user.id})`)
-        .order('created_at', { ascending: true });
+    // Only fetch history if we have an active chat
+    if (activeChatId) {
+      const fetchHistory = async () => {
+        const { data } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`and(sender_id.eq.${session.user.id},recipient_id.eq.${activeChatId}),and(sender_id.eq.${activeChatId},recipient_id.eq.${session.user.id})`)
+          .order('created_at', { ascending: true });
 
-      if (data) setMessages(data);
-    };
-
-    fetchHistory();
+        if (data) setMessages(data);
+      };
+      fetchHistory();
+    }
 
     const channel = supabase
-      .channel(`chat:${activeChatId}`)
+      .channel(`global_messages:${session.user.id}`)
       .on(
         'postgres_changes',
         {
@@ -100,22 +110,50 @@ export default function App() {
            if (payload.eventType === 'INSERT') {
              const newMessage = payload.new as Message;
              
-             // Check for Nudge/Attention Call
-             if (newMessage.sender_id === activeChatId) {
+             // --- Lógica de Notificação e Som ---
+             // Verifica se a mensagem é para mim e não fui eu que enviei (redundante pelo filtro, mas seguro)
+             if (newMessage.sender_id !== session.user.id) {
+                
+                // 1. Som e Vibração
                 if (newMessage.content === '[NUDGE]') {
-                  // Play sound
+                  alertAudioRef.current.currentTime = 0;
                   alertAudioRef.current.play().catch(e => console.log("Audio autoplay blocked", e));
-                  // Vibrate: Buzz-Pause-Buzz
-                  if (navigator.vibrate) {
-                    navigator.vibrate([200, 100, 200, 100, 500]);
-                  }
+                  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+                } else {
+                  // Mensagem normal
+                  msgAudioRef.current.currentTime = 0;
+                  msgAudioRef.current.play().catch(e => console.log("Audio autoplay blocked", e));
                 }
-                setMessages(prev => [...prev, newMessage]);
+
+                // 2. Notificação do Sistema (Browser)
+                if (document.visibilityState === 'hidden' || Notification.permission === 'granted') {
+                   const sender = contacts.find(c => c.id === newMessage.sender_id);
+                   const senderName = sender?.username || 'Novo Mensagem';
+                   
+                   let bodyText = newMessage.content;
+                   if (bodyText.startsWith('[IMAGE]')) bodyText = '📷 Enviou uma foto';
+                   else if (bodyText.startsWith('[AUDIO]')) bodyText = '🎤 Enviou um áudio';
+                   else if (bodyText === '[NUDGE]') bodyText = '🔔 Chamou sua atenção!';
+
+                   new Notification(senderName, {
+                      body: bodyText,
+                      icon: '/vite.svg', // Icone padrão
+                      silent: true // Já tocamos nosso som
+                   });
+                }
+
+                // Se estivermos no chat ativo, adiciona à lista
+                if (activeChatId === newMessage.sender_id) {
+                   setMessages(prev => [...prev, newMessage]);
+                }
              }
            } else if (payload.eventType === 'UPDATE') {
-             setMessages(prev => prev.map(msg => 
-               msg.id === payload.new.id ? payload.new as Message : msg
-             ));
+             // Atualiza mensagem se estiver no chat ativo
+             if (activeChatId) {
+                setMessages(prev => prev.map(msg => 
+                  msg.id === payload.new.id ? payload.new as Message : msg
+                ));
+             }
            }
         }
       )
@@ -128,15 +166,20 @@ export default function App() {
            filter: `sender_id=eq.${session.user.id}`
         },
         (payload) => {
+           // Atualizações enviadas por MIM (ex: em outra aba/dispositivo)
            if (payload.eventType === 'INSERT') {
-              setMessages(prev => {
-                if (prev.find(m => m.id === payload.new.id)) return prev;
-                return [...prev, payload.new as Message];
-              });
+              if (activeChatId === payload.new.recipient_id) {
+                setMessages(prev => {
+                  if (prev.find(m => m.id === payload.new.id)) return prev;
+                  return [...prev, payload.new as Message];
+                });
+              }
            } else if (payload.eventType === 'UPDATE') {
-              setMessages(prev => prev.map(msg => 
-                 msg.id === payload.new.id ? payload.new as Message : msg
-              ));
+              if (activeChatId) {
+                setMessages(prev => prev.map(msg => 
+                   msg.id === payload.new.id ? payload.new as Message : msg
+                ));
+              }
            }
         }
       )
@@ -145,7 +188,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [activeChatId, session]);
+  }, [activeChatId, session, contacts]); // Add contacts dependency to resolve sender name
 
   // Scroll to bottom
   useEffect(() => {
