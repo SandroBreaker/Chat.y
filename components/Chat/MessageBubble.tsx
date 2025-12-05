@@ -72,7 +72,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         <img 
           src={cleanContent} 
           alt="Shared" 
-          className="rounded-lg max-w-full h-auto object-cover min-w-[150px] min-h-[150px]"
+          className="rounded-lg max-w-full h-auto object-cover min-w-[150px] min-h-[150px] animate-fade-in"
           loading="lazy"
         />
       );
@@ -113,11 +113,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   const distinctReactions = Array.from(new Set(reactionsList)).slice(0, 3);
 
   return (
-    <div className={`relative mb-6 flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
+    <div className={`relative mb-6 flex ${isMe ? 'justify-end' : 'justify-start'} group animate-message-pop`}>
       {/* Backdrop for Context Menu */}
       {isContextActive && (
         <div 
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-ios"
           onClick={(e) => { e.stopPropagation(); closeContext(); }} 
         />
       )}
@@ -128,7 +128,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           relative z-30 max-w-[75%] 
           ${isImage ? 'p-1' : 'px-4 py-2'}
           ${isNudge ? 'border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]' : ''}
-          rounded-2xl text-[17px] leading-snug cursor-pointer transition-transform duration-200
+          rounded-2xl text-[17px] leading-snug cursor-pointer transition-all duration-300 ease-ios
           ${isMe ? 'bg-ios-bubbleSent text-white rounded-br-none' : 'bg-ios-bubbleReceived text-white rounded-bl-none'}
           ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
         `}
@@ -144,7 +144,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {reactionsList.length > 0 && (
           <div className={`
             absolute -bottom-4 ${isMe ? 'left-0 -translate-x-1/4' : 'right-0 translate-x-1/4'}
-            bg-ios-gray border-2 border-black rounded-full px-1.5 py-0.5 shadow-sm flex items-center -space-x-1 z-20 min-w-[24px] justify-center h-[24px]
+            bg-ios-gray border-2 border-black rounded-full px-1.5 py-0.5 shadow-sm flex items-center -space-x-1 z-20 min-w-[24px] justify-center h-[24px] animate-scale-press
           `}>
              {distinctReactions.map((r, i) => (
                <span key={i} className="text-[14px] leading-none">{r}</span>
@@ -160,11 +160,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       {isContextActive && (
         <div className={`absolute z-50 flex flex-col gap-2 ${isMe ? 'items-end right-0' : 'items-start left-0'} -top-16 min-w-[240px]`}>
           
-          <div className="bg-ios-gray p-2 rounded-full flex gap-3 shadow-lg border border-ios-separator animate-slide-up justify-between px-4">
+          <div className="bg-ios-gray p-2 rounded-full flex gap-3 shadow-lg border border-ios-separator animate-slide-up justify-between px-4 origin-bottom">
             {REACTIONS.map(emoji => (
               <button 
                 key={emoji} 
-                className="hover:scale-125 transition-transform text-2xl active:scale-95"
+                className="hover:scale-125 transition-transform duration-200 ease-ios-spring text-2xl active:scale-95"
                 onClick={(e) => {
                   e.stopPropagation();
                   onReaction(message.id, emoji);
@@ -176,12 +176,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             ))}
           </div>
 
-          <div className="bg-ios-gray/90 backdrop-blur-xl rounded-xl overflow-hidden shadow-2xl border border-ios-separator w-48 mt-2 animate-slide-up origin-bottom">
-            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between">
-              Reply <span className="opacity-50">↩️</span>
+          <div className="bg-ios-gray/90 backdrop-blur-xl rounded-xl overflow-hidden shadow-2xl border border-ios-separator w-48 mt-2 animate-slide-up origin-top duration-300">
+            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
+              Reply <span className="opacity-50 text-sm">↩️</span>
             </button>
-            <button className="w-full text-left px-4 py-3 text-white hover:bg-ios-lightGray flex justify-between">
-              Copy <span className="opacity-50">Cc</span>
+            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
+              Copy <span className="opacity-50 text-sm">📄</span>
+            </button>
+            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
+              Forward <span className="opacity-50 text-sm">➡️</span>
+            </button>
+            <button className="w-full text-left px-4 py-3 text-white border-b border-ios-separator hover:bg-ios-lightGray flex justify-between items-center transition-colors">
+              Star <span className="opacity-50 text-sm">⭐</span>
+            </button>
+            <button className="w-full text-left px-4 py-3 text-red-500 hover:bg-ios-lightGray flex justify-between items-center transition-colors">
+              Report <span className="opacity-50 text-sm">⚠️</span>
             </button>
           </div>
         </div>

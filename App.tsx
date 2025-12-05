@@ -204,7 +204,9 @@ export default function App() {
   // Scroll to bottom
   useEffect(() => {
     if (screen === 'chat') {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => {
+         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100); // Small delay to allow layout animation
     }
   }, [screen, messages]);
 
@@ -340,7 +342,7 @@ export default function App() {
 
   const renderEditProfileModal = () => (
     isEditProfileOpen && editingProfile && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all duration-300 ease-ios">
         <div className="bg-ios-gray w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-scale-press" style={{ transform: 'none' }}>
            <div className="p-4 border-b border-ios-separator flex justify-between items-center bg-ios-lightGray/30">
               <button onClick={() => setIsEditProfileOpen(false)}><X /></button>
@@ -386,18 +388,18 @@ export default function App() {
   );
 
   const renderHomeScreen = () => (
-    <div className="flex flex-col h-full bg-ios-black animate-slide-in-right">
+    <div className="flex flex-col h-full bg-ios-black animate-fade-in">
       {/* Fixed Header Section */}
-      <div className="flex-none bg-ios-gray/90 backdrop-blur-md z-10 border-b border-ios-separator pt-safe">
+      <div className="flex-none bg-ios-gray/90 backdrop-blur-md z-10 border-b border-ios-separator pt-safe transition-all duration-300 ease-ios">
         <header className="px-5 py-4 flex justify-between items-center">
-          <button className="text-red-500 text-[17px] font-medium" onClick={handleLogout}>Sair</button>
+          <button className="text-red-500 text-[17px] font-medium transition-opacity active:opacity-60" onClick={handleLogout}>Sair</button>
           
           <div className="flex flex-col items-center">
             <h1 className="text-white font-bold text-[17px]">Messages</h1>
           </div>
 
           <button 
-            className="text-ios-blue"
+            className="text-ios-blue active:opacity-60 transition-opacity"
             onClick={() => setIsNewMessageModalOpen(true)}
           >
             <NewMessage />
@@ -407,7 +409,7 @@ export default function App() {
         {/* Current User Avatar (Click to Edit) */}
         {currentUserProfile && (
            <div className="px-5 pb-4 flex items-center justify-between">
-              <div className="text-3xl font-bold text-white">Chats</div>
+              <div className="text-3xl font-bold text-white tracking-tight">Chats</div>
               <div onClick={() => openEditProfile(currentUserProfile)}>
                  <img 
                    src={currentUserProfile.avatar_url} 
@@ -419,7 +421,7 @@ export default function App() {
         )}
 
         <div className="px-4 pb-3">
-           <div className="bg-ios-lightGray rounded-xl flex items-center px-3 py-2.5 gap-2">
+           <div className="bg-ios-lightGray rounded-xl flex items-center px-3 py-2.5 gap-2 group focus-within:bg-ios-lightGray/80 transition-colors">
               <div className="text-ios-textSecondary"><Search /></div>
               <input type="text" placeholder="Search" className="bg-transparent text-white placeholder-ios-textSecondary focus:outline-none w-full text-[17px]" />
            </div>
@@ -429,7 +431,7 @@ export default function App() {
       {/* Scrollable Contact List */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
         {contacts.length === 0 && (
-           <div className="flex flex-col items-center justify-center h-full text-ios-textSecondary p-8 text-center">
+           <div className="flex flex-col items-center justify-center h-full text-ios-textSecondary p-8 text-center animate-fade-in">
              <p className="text-lg font-medium mb-2">No conversations</p>
              <p className="text-sm">Tap the icon above to start a new chat.</p>
            </div>
@@ -472,19 +474,19 @@ export default function App() {
     if (!activeProfile) return null;
 
     return (
-      <div className="flex flex-col h-full bg-ios-black relative">
+      <div className="flex flex-col h-full bg-ios-black relative animate-slide-in-right">
         {/* Fixed Header */}
-        <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe">
+        <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe transition-all duration-300 ease-ios">
           <button 
             onClick={() => setScreen('home')}
-            className="flex items-center text-ios-blue hover:opacity-70 transition-opacity px-2 -ml-2 h-10"
+            className="flex items-center text-ios-blue hover:opacity-70 transition-opacity px-2 -ml-2 h-10 active:opacity-50"
           >
             <ChevronLeft />
             <span className="text-[17px] -ml-0.5 font-medium">Messages</span>
           </button>
 
           <div 
-            className="flex flex-col items-center cursor-pointer"
+            className="flex flex-col items-center cursor-pointer active:opacity-60 transition-opacity"
             onClick={() => setScreen('info')}
           >
             <div className="relative">
@@ -495,7 +497,7 @@ export default function App() {
             </span>
           </div>
 
-          <button className="p-2 text-ios-blue rounded-full hover:bg-ios-lightGray/50 transition-colors">
+          <button className="p-2 text-ios-blue rounded-full hover:bg-ios-lightGray/50 transition-colors active:opacity-50">
             <Video />
           </button>
         </header>
@@ -503,7 +505,7 @@ export default function App() {
         {/* Scrollable Messages Area */}
         <div className="flex-1 overflow-y-auto px-4 py-6 no-scrollbar space-y-1">
           {messages.length === 0 && (
-             <div className="h-full flex flex-col items-center justify-center opacity-50">
+             <div className="h-full flex flex-col items-center justify-center opacity-50 animate-fade-in">
                <img src={activeProfile.avatar_url} className="w-20 h-20 rounded-full grayscale mb-4 opacity-50" alt="" />
                <div className="text-center text-ios-textSecondary text-sm">No messages yet with {activeProfile.username}</div>
              </div>
@@ -538,13 +540,13 @@ export default function App() {
     return (
       <div className="flex flex-col h-full bg-black animate-slide-in-right">
          {/* Fixed Header */}
-         <header className="flex-none px-4 py-3 flex justify-between items-center bg-transparent z-10 pt-safe">
-            <button onClick={() => setScreen('chat')} className="flex items-center text-white font-semibold gap-1 bg-ios-gray/50 py-2 pl-3 pr-4 rounded-full backdrop-blur-md hover:bg-ios-gray transition-colors">
+         <header className="flex-none px-4 py-3 flex justify-between items-center bg-transparent z-10 pt-safe transition-all duration-300 ease-ios">
+            <button onClick={() => setScreen('chat')} className="flex items-center text-white font-semibold gap-1 bg-ios-gray/50 py-2 pl-3 pr-4 rounded-full backdrop-blur-md hover:bg-ios-gray transition-colors active:scale-95">
                <ChevronLeft /> Done
             </button>
             <button 
                onClick={() => openEditProfile(activeProfile)}
-               className="text-ios-blue font-medium px-2"
+               className="text-ios-blue font-medium px-2 active:opacity-50"
             >
                Edit
             </button>
@@ -552,7 +554,7 @@ export default function App() {
 
          {/* Scrollable Content */}
          <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
-            <div className="flex flex-col items-center pt-6 pb-10">
+            <div className="flex flex-col items-center pt-6 pb-10 animate-fade-in">
                 <img src={activeProfile.avatar_url} className="w-28 h-28 rounded-full object-cover mb-4 shadow-2xl border-4 border-black" alt="" />
                 <h2 className="text-3xl font-bold text-white mb-1">{activeProfile.username}</h2>
                 <p className="text-ios-textSecondary text-[17px]">{activeProfile.email}</p>
@@ -566,7 +568,7 @@ export default function App() {
                 { icon: <Info />, label: "info" }
                 ].map((action, i) => (
                 <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer">
-                    <div className="w-16 h-16 rounded-2xl bg-ios-lightGray text-ios-blue flex items-center justify-center shadow-lg group-active:scale-95 transition-transform">
+                    <div className="w-16 h-16 rounded-2xl bg-ios-lightGray text-ios-blue flex items-center justify-center shadow-lg group-active:scale-95 transition-transform duration-200 ease-ios">
                         {action.icon}
                     </div>
                     <span className="text-[11px] text-ios-blue font-medium capitalize tracking-wide">{action.label}</span>
@@ -574,20 +576,20 @@ export default function App() {
                 ))}
             </div>
 
-            <div className="px-4 space-y-8 mb-8">
+            <div className="px-4 space-y-8 mb-8 animate-slide-up">
                 <div className="bg-ios-gray rounded-2xl overflow-hidden">
                 {['Share Location', 'Hide Alerts', 'Read Receipts'].map((setting, i) => (
                     <div key={i} className={`flex justify-between items-center p-4 py-4 ${i !== 2 ? 'border-b border-ios-separator' : ''}`}>
                         <span className="text-white text-[17px]">{setting}</span>
-                        <div className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300 ${i === 2 ? 'bg-ios-blue' : 'bg-ios-lightGray'}`}>
-                            <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${i === 2 ? 'translate-x-5' : ''}`}></div>
+                        <div className={`w-12 h-7 rounded-full p-1 cursor-pointer transition-colors duration-300 ease-ios ${i === 2 ? 'bg-ios-blue' : 'bg-ios-lightGray'}`}>
+                            <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-ios ${i === 2 ? 'translate-x-5' : ''}`}></div>
                         </div>
                     </div>
                 ))}
                 </div>
             </div>
 
-            <div className="px-4 mb-10">
+            <div className="px-4 mb-10 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                 <h3 className="text-ios-textSecondary text-xs font-bold uppercase tracking-wider mb-3 pl-4">Shared Photos</h3>
                 <div className="grid grid-cols-2 gap-2 rounded-xl overflow-hidden">
                 {SUGGESTED_PHOTOS.slice(0,4).map((url, i) => (
@@ -603,16 +605,16 @@ export default function App() {
   const renderNewMessageModal = () => (
     <div className={`fixed inset-0 z-50 flex flex-col items-end justify-end pointer-events-none ${isNewMessageModalOpen ? 'pointer-events-auto' : ''}`}>
       <div 
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isNewMessageModalOpen ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-ios ${isNewMessageModalOpen ? 'opacity-100' : 'opacity-0'}`}
         onClick={() => setIsNewMessageModalOpen(false)}
       />
       
       <div className={`
-        bg-ios-gray w-full h-[92vh] rounded-t-[2rem] shadow-2xl transform transition-transform duration-300 flex flex-col z-50 overflow-hidden
+        bg-ios-gray w-full h-[92vh] rounded-t-[2rem] shadow-2xl transform transition-transform duration-500 ease-ios-spring flex flex-col z-50 overflow-hidden
         ${isNewMessageModalOpen ? 'translate-y-0' : 'translate-y-full'}
       `}>
         <div className="flex justify-between items-center px-5 py-4 border-b border-ios-separator bg-ios-gray">
-           <button className="text-ios-blue text-[17px]" onClick={() => setIsNewMessageModalOpen(false)}>Cancel</button>
+           <button className="text-ios-blue text-[17px] active:opacity-50" onClick={() => setIsNewMessageModalOpen(false)}>Cancel</button>
            <h2 className="text-white font-semibold text-[17px]">New Message</h2>
            <button className="text-ios-textSecondary text-[17px] opacity-50" disabled>Next</button>
         </div>
@@ -645,7 +647,7 @@ export default function App() {
   );
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col">
+    <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col transition-all duration-300 ease-ios-spring">
       {screen === 'home' && renderHomeScreen()}
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}

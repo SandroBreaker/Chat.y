@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#000000" />
     <title>Amour Message</title>
-    <!-- Tailwind via CDN para manter o estilo visual rápido sem build complexo de CSS -->
+    <!-- Tailwind via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -28,20 +28,31 @@
             fontFamily: {
               sans: ['-apple-system', 'BlinkMacSystemFont', '"San Francisco"', '"Helvetica Neue"', 'sans-serif'],
             },
+            transitionTimingFunction: {
+              'ios': 'cubic-bezier(0.25, 1, 0.5, 1)', // Suave, desaceleração forte (Apple style)
+              'ios-spring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Levemente elástico
+            },
             animation: {
-              'slide-up': 'slideUp 0.3s ease-out forwards',
-              'slide-in-right': 'slideInRight 0.3s ease-out forwards',
+              'slide-up': 'slideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+              'slide-in-right': 'slideInRight 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards',
+              'slide-out-left': 'slideOutLeft 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards',
               'scale-press': 'scalePress 0.1s ease-out forwards',
               'pulse-slow': 'pulseSlow 2s infinite',
+              'message-pop': 'messagePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards',
+              'fade-in': 'fadeIn 0.3s ease-out forwards',
             },
             keyframes: {
               slideUp: {
-                '0%': { transform: 'translateY(100%)' },
-                '100%': { transform: 'translateY(0)' },
+                '0%': { transform: 'translateY(100%)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
               },
               slideInRight: {
-                '0%': { transform: 'translateX(100%)' },
-                '100%': { transform: 'translateX(0)' },
+                '0%': { transform: 'translateX(20%)', opacity: '0' },
+                '100%': { transform: 'translateX(0)', opacity: '1' },
+              },
+              slideOutLeft: {
+                '0%': { transform: 'translateX(0)', opacity: '1' },
+                '100%': { transform: 'translateX(-20%)', opacity: '0' },
               },
               scalePress: {
                 '0%': { transform: 'scale(1)' },
@@ -50,6 +61,14 @@
               pulseSlow: {
                 '0%, 100%': { opacity: '1' },
                 '50%': { opacity: '0.5' },
+              },
+              messagePop: {
+                '0%': { transform: 'scale(0.9) translateY(10px)', opacity: '0' },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+              },
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               }
             }
           }
@@ -82,6 +101,8 @@
         height: 100%;
         display: flex;
         flex-direction: column;
+        /* Adiciona transição suave para mudanças de layout (ex: teclado) */
+        transition: height 0.3s cubic-bezier(0.25, 1, 0.5, 1);
       }
       /* Safe Area support */
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
@@ -99,12 +120,12 @@
 <script type="importmap">
 {
   "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4"
   }
 }
