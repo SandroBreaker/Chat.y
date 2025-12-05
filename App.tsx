@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabaseClient';
 import { ChatSession, Message, Profile, ScreenType } from './types';
-import { ChevronLeft, Video, Info, Phone, Mail, Search, NewMessage } from './components/Icons';
+import { ChevronLeft, Video, Info, Phone, Mail, Search, NewMessage, Camera, Pencil, X } from './components/Icons';
 import MessageBubble from './components/Chat/MessageBubble';
 import InputArea from './components/Chat/InputArea';
 import Auth from './components/Auth';
@@ -13,9 +13,20 @@ export default function App() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [contacts, setContacts] = useState<Profile[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+  
+  // UI States
   const [activeContextMenu, setActiveContextMenu] = useState<number | null>(null);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
+  
+  // Profile Editing States
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editName, setEditName] = useState('');
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const profileFileInputRef = useRef<HTMLInputElement>(null);
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -30,29 +41,37 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // -- Fetch Contacts (Profiles) --
+  // -- Fetch Profiles --
   useEffect(() => {
     if (session?.user) {
       const fetchProfiles = async () => {
-        // Fetch everyone except me
-        const { data, error } = await supabase
+        // Fetch contacts
+        const { data: contactsData } = await supabase
           .from('profilesMSP')
           .select('*')
           .neq('id', session.user.id);
         
-        if (data) setContacts(data);
+        if (contactsData) setContacts(contactsData);
+
+        // Fetch my profile
+        const { data: myData } = await supabase
+          .from('profilesMSP')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (myData) setCurrentUserProfile(myData);
       };
       fetchProfiles();
     }
   }, [session]);
 
-  // -- Fetch & Subscribe Messages for Active Chat --
+  // -- Fetch & Subscribe Messages --
   useEffect(() => {
     if (!session?.user || !activeChatId) return;
 
-    // 1. Fetch initial history
     const fetchHistory = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('messages')
         .select('*')
         .or(`and(sender_id.eq.${session.user.id},recipient_id.eq.${activeChatId}),and(sender_id.eq.${activeChatId},recipient_id.eq.${session.user.id})`)
@@ -63,13 +82,12 @@ export default function App() {
 
     fetchHistory();
 
-    // 2. Realtime Subscription
     const channel = supabase
       .channel(`chat:${activeChatId}`)
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT and UPDATE (for reactions)
+          event: '*', 
           schema: 'public',
           table: 'messages',
           filter: `recipient_id=eq.${session.user.id}`, 
@@ -80,7 +98,6 @@ export default function App() {
                 setMessages(prev => [...prev, payload.new as Message]);
              }
            } else if (payload.eventType === 'UPDATE') {
-             // Handle updates (like reactions)
              setMessages(prev => prev.map(msg => 
                msg.id === payload.new.id ? payload.new as Message : msg
              ));
@@ -122,7 +139,70 @@ export default function App() {
     }
   }, [screen, messages]);
 
-  // -- Handlers --
+  // -- Profile Update Handlers --
+  const openEditProfile = (profile: Profile) => {
+    setEditingProfile(profile);
+    setEditName(profile.username || '');
+    setIsEditProfileOpen(true);
+  };
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !editingProfile) return;
+    
+    setIsUploadingProfile(true);
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `avatar_${editingProfile.id}_${Date.now()}.${fileExt}`;
+
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('files_chat.y')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('files_chat.y').getPublicUrl(fileName);
+      
+      // Update local state temporarily
+      setEditingProfile({ ...editingProfile, avatar_url: data.publicUrl });
+      
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      alert("Failed to upload avatar");
+    } finally {
+      setIsUploadingProfile(false);
+    }
+  };
+
+  const saveProfileChanges = async () => {
+    if (!editingProfile) return;
+
+    try {
+      const { error } = await supabase
+        .from('profilesMSP')
+        .update({ 
+          username: editName,
+          avatar_url: editingProfile.avatar_url
+        })
+        .eq('id', editingProfile.id);
+
+      if (error) throw error;
+
+      // Update local lists
+      if (editingProfile.id === session.user.id) {
+        setCurrentUserProfile({ ...editingProfile, username: editName });
+      } else {
+        setContacts(prev => prev.map(c => c.id === editingProfile.id ? { ...c, username: editName, avatar_url: editingProfile.avatar_url } : c));
+      }
+      
+      setIsEditProfileOpen(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      alert("Failed to save profile");
+    }
+  };
+
+  // -- Chat Handlers --
 
   const handleOpenChat = (contactId: string) => {
     setActiveChatId(contactId);
@@ -151,37 +231,23 @@ export default function App() {
 
   const handleReaction = async (messageId: number, emoji: string) => {
     if (!session?.user) return;
-
-    // 1. Find the message
     const message = messages.find(m => m.id === messageId);
     if (!message) return;
 
-    // 2. Prepare updated reactions object
-    // Copy existing reactions or empty object
     const currentReactions = message.reactions || {};
-    
-    // Toggle reaction: if clicking same emoji, remove it (optional, sticking to replace for now)
-    // Here we just set the user's reaction to the new emoji
     const updatedReactions = {
       ...currentReactions,
       [session.user.id]: emoji
     };
 
-    // 3. Optimistic UI Update
     setMessages(prev => prev.map(m => 
       m.id === messageId ? { ...m, reactions: updatedReactions } : m
     ));
 
-    // 4. Update DB
-    const { error } = await supabase
+    await supabase
       .from('messages')
       .update({ reactions: updatedReactions })
       .eq('id', messageId);
-
-    if (error) {
-      console.error('Error updating reaction:', error);
-      // Revert optimistic update if needed (omitted for simplicity)
-    }
   };
 
   const handleLogout = async () => {
@@ -203,13 +269,64 @@ export default function App() {
     );
   }
 
+  const renderEditProfileModal = () => (
+    isEditProfileOpen && editingProfile && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="bg-ios-gray w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-scale-press" style={{ transform: 'none' }}>
+           <div className="p-4 border-b border-ios-separator flex justify-between items-center bg-ios-lightGray/30">
+              <button onClick={() => setIsEditProfileOpen(false)}><X /></button>
+              <h3 className="text-white font-semibold">Edit Profile</h3>
+              <button onClick={saveProfileChanges} className="text-ios-blue font-bold">Save</button>
+           </div>
+           
+           <div className="p-6 flex flex-col items-center gap-6">
+              <div className="relative group">
+                 <img 
+                   src={editingProfile.avatar_url || `https://ui-avatars.com/api/?name=${editingProfile.username}`} 
+                   className="w-24 h-24 rounded-full object-cover border-4 border-ios-lightGray"
+                 />
+                 <button 
+                   onClick={() => profileFileInputRef.current?.click()}
+                   className="absolute bottom-0 right-0 bg-ios-blue text-white p-1.5 rounded-full border-4 border-ios-gray shadow-md"
+                 >
+                    <Pencil />
+                 </button>
+                 <input 
+                   ref={profileFileInputRef}
+                   type="file" 
+                   hidden 
+                   accept="image/*"
+                   onChange={handleProfilePhotoUpload}
+                 />
+                 {isUploadingProfile && <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center text-xs">...</div>}
+              </div>
+
+              <div className="w-full space-y-2">
+                 <label className="text-ios-textSecondary text-xs font-bold uppercase ml-1">Name</label>
+                 <input 
+                   type="text" 
+                   value={editName}
+                   onChange={(e) => setEditName(e.target.value)}
+                   className="w-full bg-ios-lightGray border border-ios-separator rounded-xl px-4 py-3 text-white focus:border-ios-blue outline-none"
+                 />
+              </div>
+           </div>
+        </div>
+      </div>
+    )
+  );
+
   const renderHomeScreen = () => (
     <div className="flex flex-col h-full bg-ios-black animate-slide-in-right">
       {/* Fixed Header Section */}
       <div className="flex-none bg-ios-gray/90 backdrop-blur-md z-10 border-b border-ios-separator pt-safe">
         <header className="px-5 py-4 flex justify-between items-center">
-          <button className="text-ios-blue text-[17px] font-medium" onClick={handleLogout}>Edit</button>
-          <h1 className="text-white font-bold text-[20px]">Messages</h1>
+          <button className="text-red-500 text-[17px] font-medium" onClick={handleLogout}>Sair</button>
+          
+          <div className="flex flex-col items-center">
+            <h1 className="text-white font-bold text-[17px]">Messages</h1>
+          </div>
+
           <button 
             className="text-ios-blue"
             onClick={() => setIsNewMessageModalOpen(true)}
@@ -217,6 +334,20 @@ export default function App() {
             <NewMessage />
           </button>
         </header>
+
+        {/* Current User Avatar (Click to Edit) */}
+        {currentUserProfile && (
+           <div className="px-5 pb-4 flex items-center justify-between">
+              <div className="text-3xl font-bold text-white">Chats</div>
+              <div onClick={() => openEditProfile(currentUserProfile)}>
+                 <img 
+                   src={currentUserProfile.avatar_url} 
+                   className="w-9 h-9 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                   alt="My Profile"
+                 />
+              </div>
+           </div>
+        )}
 
         <div className="px-4 pb-3">
            <div className="bg-ios-lightGray rounded-xl flex items-center px-3 py-2.5 gap-2">
@@ -342,6 +473,12 @@ export default function App() {
             <button onClick={() => setScreen('chat')} className="flex items-center text-white font-semibold gap-1 bg-ios-gray/50 py-2 pl-3 pr-4 rounded-full backdrop-blur-md hover:bg-ios-gray transition-colors">
                <ChevronLeft /> Done
             </button>
+            <button 
+               onClick={() => openEditProfile(activeProfile)}
+               className="text-ios-blue font-medium px-2"
+            >
+               Edit
+            </button>
          </header>
 
          {/* Scrollable Content */}
@@ -444,6 +581,7 @@ export default function App() {
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}
       {renderNewMessageModal()}
+      {renderEditProfileModal()}
     </div>
   );
 }

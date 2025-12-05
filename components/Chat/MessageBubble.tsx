@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Message } from '../../types';
-import { supabase } from '../../supabaseClient';
+import { Play, Pause } from '../Icons';
 
 interface MessageBubbleProps {
   message: Message;
@@ -22,6 +22,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReaction
 }) => {
   const isMe = message.sender_id === currentUserId;
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
     // For simplicity using onClick in parent, but preventing default for context
@@ -41,6 +43,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       ? message.content.replace('[AUDIO]', '') 
       : message.content;
 
+  const toggleAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        // Reset all other audios if needed, for now just play
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   const renderContent = () => {
     if (isImage) {
       return (
@@ -56,17 +71,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     if (isAudio) {
       return (
         <div className="flex items-center gap-3 min-w-[160px] py-1">
-           <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-           </div>
+           <button 
+             onClick={toggleAudio}
+             className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0 hover:bg-gray-200 transition-colors"
+           >
+             {isPlaying ? <Pause /> : <Play />}
+           </button>
            <div className="flex flex-col gap-1 w-full">
               <div className="h-1 bg-white/30 rounded-full w-full overflow-hidden">
-                 <div className="h-full bg-white w-1/3"></div>
+                 <div className={`h-full bg-white w-full origin-left transition-transform duration-[2000ms] ease-linear ${isPlaying ? 'scale-x-100' : 'scale-x-0'}`}></div>
               </div>
               <span className="text-[10px] opacity-70">Audio Message</span>
            </div>
-           {/* Native audio element hidden but could be controlled */}
-           <audio src={cleanContent} controls className="hidden" />
+           <audio 
+             ref={audioRef} 
+             src={cleanContent} 
+             onEnded={() => setIsPlaying(false)}
+             onPause={() => setIsPlaying(false)}
+             onPlay={() => setIsPlaying(true)}
+             className="hidden" 
+           />
         </div>
       );
     }
@@ -76,7 +100,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   // Process reactions to display distinct ones
   const reactionsList = message.reactions ? Object.values(message.reactions) : [];
-  // Count distinct reactions or just show distinct ones (iMessage style shows distinct ones stacked)
   const distinctReactions = Array.from(new Set(reactionsList)).slice(0, 3);
 
   return (
@@ -99,14 +122,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
         `}
         onContextMenu={handleLongPress}
-        onClick={() => {
-           if(isAudio) {
-              const audio = new Audio(cleanContent);
-              audio.play();
-           } else {
-              onOpenContext(message.id);
-           }
-        }}
+        onClick={() => !isAudio && onOpenContext(message.id)}
         style={{
           boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : 'none'
         }}

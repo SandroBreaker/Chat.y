@@ -36,7 +36,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     
     const file = e.target.files[0];
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
+    const fileName = `img_${Date.now()}.${fileExt}`;
     const filePath = `${fileName}`;
 
     setUploading(true);
@@ -55,9 +55,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       
       // Send as a specially formatted string that MessageBubble will parse
       onSendMessage(`[IMAGE]${data.publicUrl}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      alert('Error uploading image. Make sure "files_chat.y" bucket exists and is public.');
+      alert(`Error uploading image: ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -71,7 +71,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Detect supported mime type (iOS requires audio/mp4, others prefer audio/webm)
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
+        ? 'audio/mp4' 
+        : 'audio/webm';
+        
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -82,8 +88,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const fileName = `audio_${Date.now()}.webm`;
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const fileExt = mimeType.split('/')[1]; // mp4 or webm
+        const fileName = `audio_${Date.now()}.${fileExt}`;
         
         setUploading(true);
         try {
@@ -95,9 +102,9 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
           const { data } = supabase.storage.from('files_chat.y').getPublicUrl(fileName);
           onSendMessage(`[AUDIO]${data.publicUrl}`);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error uploading audio:', error);
-          alert('Error sending audio. Check bucket "files_chat.y" permissions.');
+          alert(`Error sending audio: ${error.message}`);
         } finally {
           setUploading(false);
           // Stop all tracks to release mic
