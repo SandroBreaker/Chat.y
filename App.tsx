@@ -69,33 +69,43 @@ export default function App() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen to INSERT and UPDATE (for reactions)
           schema: 'public',
           table: 'messages',
           filter: `recipient_id=eq.${session.user.id}`, 
         },
         (payload) => {
-          // If the message is from the person we are currently chatting with
-          if (payload.new.sender_id === activeChatId) {
-             setMessages(prev => [...prev, payload.new as Message]);
-          }
+           if (payload.eventType === 'INSERT') {
+             if (payload.new.sender_id === activeChatId) {
+                setMessages(prev => [...prev, payload.new as Message]);
+             }
+           } else if (payload.eventType === 'UPDATE') {
+             // Handle updates (like reactions)
+             setMessages(prev => prev.map(msg => 
+               msg.id === payload.new.id ? payload.new as Message : msg
+             ));
+           }
         }
       )
       .on(
         'postgres_changes',
         {
-           event: 'INSERT',
+           event: '*', 
            schema: 'public',
            table: 'messages',
            filter: `sender_id=eq.${session.user.id}`
         },
         (payload) => {
-           // Optimistic update handled by sendMessage, but good to sync or confirm
-           // Check if we already have it (optimistic UI) to avoid dupe, or just rely on state
-           setMessages(prev => {
-              if (prev.find(m => m.id === payload.new.id)) return prev;
-              return [...prev, payload.new as Message];
-           });
+           if (payload.eventType === 'INSERT') {
+              setMessages(prev => {
+                if (prev.find(m => m.id === payload.new.id)) return prev;
+                return [...prev, payload.new as Message];
+              });
+           } else if (payload.eventType === 'UPDATE') {
+              setMessages(prev => prev.map(msg => 
+                 msg.id === payload.new.id ? payload.new as Message : msg
+              ));
+           }
         }
       )
       .subscribe();
@@ -136,6 +146,41 @@ export default function App() {
     if (error) {
        console.error("Failed to send", error);
        alert("Error sending message");
+    }
+  };
+
+  const handleReaction = async (messageId: number, emoji: string) => {
+    if (!session?.user) return;
+
+    // 1. Find the message
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
+
+    // 2. Prepare updated reactions object
+    // Copy existing reactions or empty object
+    const currentReactions = message.reactions || {};
+    
+    // Toggle reaction: if clicking same emoji, remove it (optional, sticking to replace for now)
+    // Here we just set the user's reaction to the new emoji
+    const updatedReactions = {
+      ...currentReactions,
+      [session.user.id]: emoji
+    };
+
+    // 3. Optimistic UI Update
+    setMessages(prev => prev.map(m => 
+      m.id === messageId ? { ...m, reactions: updatedReactions } : m
+    ));
+
+    // 4. Update DB
+    const { error } = await supabase
+      .from('messages')
+      .update({ reactions: updatedReactions })
+      .eq('id', messageId);
+
+    if (error) {
+      console.error('Error updating reaction:', error);
+      // Revert optimistic update if needed (omitted for simplicity)
     }
   };
 
@@ -272,6 +317,7 @@ export default function App() {
               onOpenContext={setActiveContextMenu}
               isContextActive={activeContextMenu === msg.id}
               closeContext={() => setActiveContextMenu(null)}
+              onReaction={handleReaction}
             />
           ))}
           <div ref={messagesEndRef} className="h-2" />

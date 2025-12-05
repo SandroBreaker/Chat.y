@@ -44,20 +44,20 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
 
     try {
       const { error: uploadError } = await supabase.storage
-        .from('chat-assets')
+        .from('files_chat')
         .upload(filePath, file);
 
       if (uploadError) {
         throw uploadError;
       }
 
-      const { data } = supabase.storage.from('chat-assets').getPublicUrl(filePath);
+      const { data } = supabase.storage.from('files_chat').getPublicUrl(filePath);
       
       // Send as a specially formatted string that MessageBubble will parse
       onSendMessage(`[IMAGE]${data.publicUrl}`);
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error uploading image. Make sure "chat-assets" bucket exists and is public.');
+      alert('Error uploading image. Make sure "files_chat" bucket exists and is public.');
     } finally {
       setUploading(false);
     }
@@ -88,12 +88,12 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         setUploading(true);
         try {
           const { error: uploadError } = await supabase.storage
-            .from('chat-assets')
+            .from('files_chat')
             .upload(fileName, audioBlob);
 
           if (uploadError) throw uploadError;
 
-          const { data } = supabase.storage.from('chat-assets').getPublicUrl(fileName);
+          const { data } = supabase.storage.from('files_chat').getPublicUrl(fileName);
           onSendMessage(`[AUDIO]${data.publicUrl}`);
         } catch (error) {
           console.error('Error uploading audio:', error);

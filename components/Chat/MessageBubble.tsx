@@ -8,11 +8,19 @@ interface MessageBubbleProps {
   onOpenContext: (messageId: number) => void;
   isContextActive: boolean;
   closeContext: () => void;
+  onReaction: (messageId: number, emoji: string) => void;
 }
 
 const REACTIONS = ["❤️", "👍", "👎", "😂", "❓", "‼️"];
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentUserId, onOpenContext, isContextActive, closeContext }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ 
+  message, 
+  currentUserId, 
+  onOpenContext, 
+  isContextActive, 
+  closeContext,
+  onReaction
+}) => {
   const isMe = message.sender_id === currentUserId;
 
   const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
@@ -66,8 +74,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentUserId, o
     return message.content;
   };
 
+  // Process reactions to display distinct ones
+  const reactionsList = message.reactions ? Object.values(message.reactions) : [];
+  // Count distinct reactions or just show distinct ones (iMessage style shows distinct ones stacked)
+  const distinctReactions = Array.from(new Set(reactionsList)).slice(0, 3);
+
   return (
-    <div className={`relative mb-2 flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
+    <div className={`relative mb-6 flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
       {/* Backdrop for Context Menu */}
       {isContextActive && (
         <div 
@@ -99,18 +112,37 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentUserId, o
         }}
       >
         {renderContent()}
+
+        {/* Reactions Display */}
+        {reactionsList.length > 0 && (
+          <div className={`
+            absolute -bottom-4 ${isMe ? 'left-0 -translate-x-1/4' : 'right-0 translate-x-1/4'}
+            bg-ios-gray border-2 border-black rounded-full px-1.5 py-0.5 shadow-sm flex items-center -space-x-1 z-20 min-w-[24px] justify-center h-[24px]
+          `}>
+             {distinctReactions.map((r, i) => (
+               <span key={i} className="text-[14px] leading-none">{r}</span>
+             ))}
+             {reactionsList.length > 3 && (
+                <span className="text-[10px] text-white pl-1">+{reactionsList.length - 3}</span>
+             )}
+          </div>
+        )}
       </div>
 
       {/* Context Menu Overlay */}
       {isContextActive && (
-        <div className={`absolute z-50 flex flex-col gap-2 ${isMe ? 'items-end right-0' : 'items-start left-0'} -top-16 min-w-[200px]`}>
+        <div className={`absolute z-50 flex flex-col gap-2 ${isMe ? 'items-end right-0' : 'items-start left-0'} -top-16 min-w-[240px]`}>
           
-          <div className="bg-ios-gray p-2 rounded-full flex gap-3 shadow-lg border border-ios-separator animate-slide-up">
+          <div className="bg-ios-gray p-2 rounded-full flex gap-3 shadow-lg border border-ios-separator animate-slide-up justify-between px-4">
             {REACTIONS.map(emoji => (
               <button 
                 key={emoji} 
-                className="hover:scale-125 transition-transform text-xl"
-                onClick={() => closeContext()}
+                className="hover:scale-125 transition-transform text-2xl active:scale-95"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReaction(message.id, emoji);
+                  closeContext();
+                }}
               >
                 {emoji}
               </button>

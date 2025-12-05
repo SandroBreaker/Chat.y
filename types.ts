@@ -9,6 +9,7 @@ export interface Message {
   created_at: string;
   is_read: boolean;
   type?: 'text' | 'image'; // Campos visuais extras
+  reactions?: { [userId: string]: string } | null; // Mapa: userId -> emoji
 }
 
 // Mapeia a tabela 'profilesMSP'
