@@ -113,9 +113,9 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
     <div className="flex flex-col items-center justify-center h-full bg-black px-8 animate-slide-up">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center space-y-2">
-           <h1 className="text-4xl font-bold text-white tracking-tight">Amour</h1>
+           <h1 className="text-4xl font-bold text-white tracking-tight">Messages</h1>
            <p className="text-ios-textSecondary text-[17px]">
-             {isSignUp ? "Crie sua conta para começar." : "Conecte-se com quem você ama."}
+             {isSignUp ? "Create your account." : "Simple, reliable messaging."}
            </p>
         </div>
 

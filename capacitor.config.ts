@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.amourmessage.app',
-  appName: 'Amour Message',
+  appName: 'Messages',
   webDir: 'dist',
   server: {
     androidScheme: 'https'
