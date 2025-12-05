@@ -80,8 +80,6 @@ export default function App() {
         if (myData) setCurrentUserProfile(myData);
 
         // 3. Fetch Recent Messages (Snapshot for Home Screen)
-        // Note: For a real production app, use an RPC or a View to get "last message per conversation"
-        // Here we fetch a reasonable amount of recent history to populate the UI
         const { data: recentMsgs } = await supabase
           .from('messages')
           .select('*')
@@ -93,7 +91,6 @@ export default function App() {
           const lastMsgMap: Record<string, Message> = {};
           recentMsgs.forEach((msg: Message) => {
              const partnerId = msg.sender_id === session.user.id ? msg.recipient_id : msg.sender_id;
-             // Since we iterate desc, the first one we find is the latest
              if (!lastMsgMap[partnerId]) {
                lastMsgMap[partnerId] = msg;
              }
@@ -232,13 +229,38 @@ export default function App() {
     };
   }, [activeChatId, session, contacts]); 
 
-  // Auto-scroll
+  // Auto-scroll logic (Key for keyboard responsiveness)
+  const scrollToBottom = () => {
+    // Timeout helps wait for keyboard animation
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   useEffect(() => {
     if (screen === 'chat') {
-      // Small timeout to allow images/dom to settle
-      setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      scrollToBottom();
+      
+      // Listen for visual viewport resize (keyboard open/close)
+      const handleResize = () => {
+        scrollToBottom();
+      };
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
+      } else {
+        window.addEventListener('resize', handleResize);
+      }
+
+      return () => {
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', handleResize);
+          window.visualViewport.removeEventListener('scroll', handleResize);
+        } else {
+          window.removeEventListener('resize', handleResize);
+        }
+      };
     }
   }, [screen, messages]);
 
@@ -254,7 +276,6 @@ export default function App() {
     
     setIsUploadingProfile(true);
     const file = e.target.files[0];
-    // Sanitize
     const fileExt = file.name.split('.').pop()?.toLowerCase();
     if (!['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '')) {
         alert("Invalid file type");
@@ -310,7 +331,6 @@ export default function App() {
   const handleOpenChat = (contactId: string) => {
     setActiveChatId(contactId);
     setScreen('chat');
-    // Stop any playing audio when entering chat
     setPlayingAudioId(null);
   };
 
@@ -324,7 +344,6 @@ export default function App() {
       is_read: false
     };
     
-    // Optimistic UI update handled by subscription usually, but for speed we rely on Realtime
     const { error } = await supabase
       .from('messages')
       .insert([newMessagePayload]);
@@ -343,7 +362,6 @@ export default function App() {
     const currentReactions = message.reactions ? { ...message.reactions } : {};
     currentReactions[session.user.id] = emoji;
 
-    // Optimistic Update
     setMessages(prev => prev.map(m => 
       m.id === messageId ? { ...m, reactions: currentReactions } : m
     ));
@@ -379,7 +397,7 @@ export default function App() {
 
   if (!session) {
     return (
-       <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator">
+       <div className="max-w-md mx-auto h-full relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator">
           <Auth onAuthSuccess={() => {}} />
        </div>
     );
@@ -697,7 +715,8 @@ export default function App() {
   );
 
   return (
-    <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col">
+    // Changed h-[100dvh] to h-full to respect visual viewport resizing (keyboard)
+    <div className="max-w-md mx-auto h-full relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col">
       {screen === 'home' && renderHomeScreen()}
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}

@@ -45,6 +45,13 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
     setIsMediaSheetOpen(false);
   };
 
+  // Ensure visibility on focus (Keyboard push)
+  const handleFocus = () => {
+    setTimeout(() => {
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
+
   // --- Image Upload Logic ---
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -186,6 +193,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  onFocus={handleFocus}
                   placeholder="iMessage"
                   className="w-full bg-black border border-ios-separator rounded-full py-2.5 px-5 text-white placeholder-ios-textSecondary focus:outline-none focus:border-ios-blue transition-colors text-[17px]"
                 />
