@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#000000" />
     <title>Amour Message</title>
-    <!-- Mantendo Tailwind via CDN para simplicidade no setup, mas em produção recomenda-se instalar via PostCSS -->
+    <!-- Tailwind via CDN para manter o estilo visual rápido sem build complexo de CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -72,34 +72,40 @@
       }
       body {
         height: 100%;
-        overflow: hidden; /* Impede scroll na página inteira */
+        overflow: hidden;
         background-color: #000000;
         color: #ffffff;
         -webkit-tap-highlight-color: transparent;
-        overscroll-behavior-y: none; /* Previne bounce effect no body */
+        overscroll-behavior-y: none;
       }
       #root {
         height: 100%;
         display: flex;
         flex-direction: column;
       }
-      /* Safe Area support for notched phones */
-      .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      .pt-safe {
-        padding-top: env(safe-area-inset-top);
+      /* Safe Area support */
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+
+      /* Ajuste visual para Desktop: Fundo cinza fora do "celular" */
+      @media (min-width: 768px) {
+        body {
+          background-color: #121212;
+          background-image: radial-gradient(#1c1c1e 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
     "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2"
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4"
   }
 }
 </script>

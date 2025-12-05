@@ -115,14 +115,21 @@ export default function App() {
              if (newMessage.sender_id !== session.user.id) {
                 
                 // 1. Som e Vibração
+                const playSound = async (audio: HTMLAudioElement) => {
+                  try {
+                    audio.currentTime = 0;
+                    await audio.play();
+                  } catch (e) {
+                    console.log("Autoplay blocked by browser policy. Interaction needed.");
+                  }
+                };
+
                 if (newMessage.content === '[NUDGE]') {
-                  alertAudioRef.current.currentTime = 0;
-                  alertAudioRef.current.play().catch(e => console.log("Audio autoplay blocked", e));
+                  playSound(alertAudioRef.current);
                   if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
                 } else {
                   // Mensagem normal
-                  msgAudioRef.current.currentTime = 0;
-                  msgAudioRef.current.play().catch(e => console.log("Audio autoplay blocked", e));
+                  playSound(msgAudioRef.current);
                 }
 
                 // 2. Notificação do Sistema (Browser)
@@ -135,11 +142,15 @@ export default function App() {
                    else if (bodyText.startsWith('[AUDIO]')) bodyText = '🎤 Enviou um áudio';
                    else if (bodyText === '[NUDGE]') bodyText = '🔔 Chamou sua atenção!';
 
-                   new Notification(senderName, {
-                      body: bodyText,
-                      icon: '/vite.svg', // Icone padrão
-                      silent: true // Já tocamos nosso som
-                   });
+                   try {
+                     new Notification(senderName, {
+                        body: bodyText,
+                        icon: '/vite.svg', // Icone padrão
+                        silent: true // Já tocamos nosso som
+                     });
+                   } catch (e) {
+                     console.log("Notification failed", e);
+                   }
                 }
 
                 // Se estivermos no chat ativo, adiciona à lista

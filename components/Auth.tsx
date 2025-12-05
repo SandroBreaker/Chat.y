@@ -48,8 +48,6 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
           
           if (profileError) {
              console.error('Error creating profile:', profileError);
-             // Se der erro no perfil, mas criou o user, não bloqueamos o fluxo crítico, 
-             // mas idealmente deveria tratar/reverter.
           }
         }
       } else {
@@ -58,14 +56,33 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
 
         // Se NÃO parece um email (não tem @), assumimos que é username
         if (!emailToLogin.includes('@')) {
+           // Tenta buscar o email vinculado ao username
            const { data: profile, error: profileError } = await supabase
              .from('profilesMSP')
              .select('email')
              .eq('username', identity)
              .single();
 
-           if (profileError || !profile) {
-             throw new Error("Usuário não encontrado.");
+           // Tratamento específico de erros
+           if (profileError) {
+             console.error("Erro ao buscar usuário:", profileError);
+             
+             // Erro de conexão ou CORS (Failed to fetch)
+             if (profileError.message?.includes("Failed to fetch")) {
+                throw new Error("Erro de conexão. Verifique sua internet ou tente usar o Email.");
+             }
+             
+             // Código PGRST116 = Nenhum resultado encontrado (JSON object requested, multiple (or no) rows returned)
+             if (profileError.code === 'PGRST116') {
+                throw new Error("Usuário não encontrado. Verifique o nome ou use seu Email.");
+             }
+
+             // Erro de permissão (RLS) ou outros
+             throw new Error("Não foi possível validar pelo nome de usuário. Tente entrar usando seu Email.");
+           }
+           
+           if (!profile || !profile.email) {
+             throw new Error("Cadastro corrompido. Tente entrar com o Email.");
            }
            
            emailToLogin = profile.email;
@@ -83,7 +100,10 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
       onAuthSuccess();
     } catch (err: any) {
       console.error(err);
-      setError(err.message === "Invalid login credentials" ? "Credenciais inválidas." : err.message);
+      const msg = err.message === "Invalid login credentials" 
+        ? "Senha incorreta ou usuário inexistente." 
+        : err.message || "Erro desconhecido.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -100,7 +120,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         </div>
 
         {error && (
-          <div className="bg-red-900/40 text-red-200 p-4 rounded-xl text-sm border border-red-800/50 backdrop-blur-sm text-center">
+          <div className="bg-red-500/10 text-red-200 p-4 rounded-2xl text-sm border border-red-500/20 text-center animate-pulse-slow">
             {error}
           </div>
         )}
