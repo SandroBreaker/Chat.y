@@ -16,8 +16,54 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentUserId, o
   const isMe = message.sender_id === currentUserId;
 
   const handleLongPress = (e: React.TouchEvent | React.MouseEvent) => {
-    e.preventDefault();
-    onOpenContext(message.id);
+    // For simplicity using onClick in parent, but preventing default for context
+    if (e.type === 'contextmenu') {
+       e.preventDefault();
+       onOpenContext(message.id);
+    }
+  };
+  
+  // Detect content type hacks
+  const isImage = message.content.startsWith('[IMAGE]');
+  const isAudio = message.content.startsWith('[AUDIO]');
+  
+  const cleanContent = isImage 
+    ? message.content.replace('[IMAGE]', '') 
+    : isAudio 
+      ? message.content.replace('[AUDIO]', '') 
+      : message.content;
+
+  const renderContent = () => {
+    if (isImage) {
+      return (
+        <img 
+          src={cleanContent} 
+          alt="Shared" 
+          className="rounded-lg max-w-full h-auto object-cover min-w-[150px] min-h-[150px]"
+          loading="lazy"
+        />
+      );
+    }
+    
+    if (isAudio) {
+      return (
+        <div className="flex items-center gap-3 min-w-[160px] py-1">
+           <div className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+           </div>
+           <div className="flex flex-col gap-1 w-full">
+              <div className="h-1 bg-white/30 rounded-full w-full overflow-hidden">
+                 <div className="h-full bg-white w-1/3"></div>
+              </div>
+              <span className="text-[10px] opacity-70">Audio Message</span>
+           </div>
+           {/* Native audio element hidden but could be controlled */}
+           <audio src={cleanContent} controls className="hidden" />
+        </div>
+      );
+    }
+
+    return message.content;
   };
 
   return (
@@ -33,16 +79,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentUserId, o
       {/* Message Content */}
       <div 
         className={`
-          relative z-30 max-w-[75%] px-4 py-2 rounded-2xl text-[17px] leading-snug cursor-pointer transition-transform duration-200
+          relative z-30 max-w-[75%] 
+          ${isImage ? 'p-1' : 'px-4 py-2'}
+          rounded-2xl text-[17px] leading-snug cursor-pointer transition-transform duration-200
           ${isMe ? 'bg-ios-bubbleSent text-white rounded-br-none' : 'bg-ios-bubbleReceived text-white rounded-bl-none'}
           ${isContextActive ? 'scale-105 shadow-2xl' : 'active:scale-95'}
         `}
-        onClick={handleLongPress}
+        onContextMenu={handleLongPress}
+        onClick={() => {
+           if(isAudio) {
+              const audio = new Audio(cleanContent);
+              audio.play();
+           } else {
+              onOpenContext(message.id);
+           }
+        }}
         style={{
           boxShadow: isContextActive ? '0 0 0 1000px rgba(0,0,0,0.0)' : 'none'
         }}
       >
-        {message.content}
+        {renderContent()}
       </div>
 
       {/* Context Menu Overlay */}
