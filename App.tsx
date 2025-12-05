@@ -6,6 +6,7 @@ import MessageBubble from './components/Chat/MessageBubble';
 import InputArea from './components/Chat/InputArea';
 import Auth from './components/Auth';
 import { SUGGESTED_PHOTOS } from './constants';
+import CallOverlay from './components/CallOverlay';
 
 // Som de alerta (beep curto e agradável para NUDGE)
 const ALERT_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -24,6 +25,9 @@ export default function App() {
   const [activeContextMenu, setActiveContextMenu] = useState<number | null>(null);
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false);
   
+  // Call State
+  const [activeCall, setActiveCall] = useState<{ active: boolean, contact: Profile | null }>({ active: false, contact: null });
+
   // Profile Editing States
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
@@ -326,6 +330,14 @@ export default function App() {
     setSession(null);
     setScreen('home');
   };
+  
+  const startCall = (contact: Profile) => {
+    setActiveCall({ active: true, contact });
+  };
+  
+  const endCall = () => {
+    setActiveCall({ active: false, contact: null });
+  };
 
   // -- Helpers --
   const getActiveProfile = () => contacts.find(c => c.id === activeChatId);
@@ -394,7 +406,7 @@ export default function App() {
         <header className="px-5 py-4 flex justify-between items-center">
           <button className="text-red-500 text-[17px] font-medium transition-opacity active:opacity-60" onClick={handleLogout}>Sair</button>
           
-          <div className="flex flex-col items-center">
+          <div className="flex-1 flex justify-center">
             <h1 className="text-white font-bold text-[17px]">Messages</h1>
           </div>
 
@@ -474,7 +486,7 @@ export default function App() {
     if (!activeProfile) return null;
 
     return (
-      <div className="flex flex-col h-full bg-ios-black relative animate-slide-in-right">
+      <div className="flex flex-col h-full bg-ios-black relative animate-slide-in-right overflow-hidden">
         {/* Fixed Header */}
         <header className="flex-none px-4 py-3 flex items-center justify-between bg-ios-gray/80 backdrop-blur-xl z-20 border-b border-ios-separator pt-safe transition-all duration-300 ease-ios">
           <button 
@@ -497,7 +509,10 @@ export default function App() {
             </span>
           </div>
 
-          <button className="p-2 text-ios-blue rounded-full hover:bg-ios-lightGray/50 transition-colors active:opacity-50">
+          <button 
+            onClick={() => startCall(activeProfile)}
+            className="p-2 text-ios-blue rounded-full hover:bg-ios-lightGray/50 transition-colors active:opacity-50"
+          >
             <Video />
           </button>
         </header>
@@ -561,8 +576,13 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-4 gap-6 px-6 mb-10 max-w-sm mx-auto">
+                <div onClick={() => startCall(activeProfile)} className="flex flex-col items-center gap-2 group cursor-pointer">
+                    <div className="w-16 h-16 rounded-2xl bg-ios-lightGray text-ios-blue flex items-center justify-center shadow-lg group-active:scale-95 transition-transform duration-200 ease-ios">
+                        <Phone />
+                    </div>
+                    <span className="text-[11px] text-ios-blue font-medium capitalize tracking-wide">Wi-Fi Call</span>
+                </div>
                 {[
-                { icon: <Phone />, label: "call" },
                 { icon: <Video />, label: "video" },
                 { icon: <Mail />, label: "mail" },
                 { icon: <Info />, label: "info" }
@@ -653,6 +673,11 @@ export default function App() {
       {screen === 'info' && renderInfoScreen()}
       {renderNewMessageModal()}
       {renderEditProfileModal()}
+      
+      {/* Call Overlay Component */}
+      {activeCall.active && activeCall.contact && (
+         <CallOverlay contact={activeCall.contact} onEndCall={endCall} />
+      )}
     </div>
   );
 }

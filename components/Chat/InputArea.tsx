@@ -142,8 +142,8 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         className="hidden" 
       />
 
-      {/* Input Bar */}
-      <div className="bg-ios-gray/80 backdrop-blur-xl border-t border-ios-separator pb-safe transition-all duration-300 ease-ios">
+      {/* Input Bar - z-50 to stay on top of the sheet */}
+      <div className="relative z-50 bg-ios-gray/90 backdrop-blur-xl border-t border-ios-separator pb-safe transition-all duration-300 ease-ios">
         <div className="flex items-center gap-3 px-3 py-3">
           <button 
             className={`p-2.5 rounded-full bg-ios-lightGray text-ios-textSecondary transition-all duration-300 ease-ios active:scale-95 ${isMediaSheetOpen ? 'rotate-45 bg-ios-blue text-white' : ''}`}
@@ -198,15 +198,15 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         </div>
       </div>
 
-      {/* Media Sheet */}
+      {/* Media Sheet - Absolute positioning relative to the chat container */}
       <div 
         className={`
-          fixed bottom-0 left-0 right-0 bg-ios-gray z-40 transition-transform duration-500 ease-ios-spring border-t border-ios-separator rounded-t-2xl shadow-2xl
-          ${isMediaSheetOpen ? 'translate-y-0' : 'translate-y-full'}
+          absolute bottom-0 left-0 right-0 bg-ios-gray z-40 transition-transform duration-500 ease-ios-spring border-t border-ios-separator rounded-t-2xl shadow-2xl
+          ${isMediaSheetOpen ? 'translate-y-0' : 'translate-y-full invisible'}
         `}
         style={{ height: '320px', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="p-5 h-full overflow-y-auto no-scrollbar">
+        <div className="p-5 h-full overflow-y-auto no-scrollbar pt-4">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-white font-semibold text-xl">Apps & Media</h3>
             <button className="text-ios-blue text-[17px] active:opacity-50" onClick={triggerFileSelect}>All Photos</button>
@@ -262,11 +262,11 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
         </div>
       </div>
       
-      {/* Overlay to close sheet when clicking outside (on the chat area) */}
+      {/* Overlay to close sheet when clicking outside */}
       {isMediaSheetOpen && (
         <div 
-          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300" 
-          style={{ bottom: '320px' }}
+          className="absolute inset-0 z-30 bg-black/20 backdrop-blur-[1px] transition-opacity duration-300" 
+          style={{ bottom: '320px', top: '-1000px' }} // Extend top to cover chat
           onClick={() => setIsMediaSheetOpen(false)}
         />
       )}
