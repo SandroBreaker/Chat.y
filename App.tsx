@@ -40,7 +40,6 @@ export default function App() {
   const profileFileInputRef = useRef<HTMLInputElement>(null);
   const alertAudioRef = useRef<HTMLAudioElement>(new Audio(ALERT_SOUND_URL));
   const msgAudioRef = useRef<HTMLAudioElement>(new Audio(MSG_SOUND_URL));
-  const appContainerRef = useRef<HTMLDivElement>(null);
   
   // -- Initialization & Auth --
   useEffect(() => {
@@ -292,36 +291,30 @@ export default function App() {
   // -- Renders --
 
   const renderContextMenuOverlay = () => {
-    if (!contextMenuData || !session?.user || !appContainerRef.current) return null;
+    if (!contextMenuData || !session?.user) return null;
     const { rect, message } = contextMenuData;
     const isMe = message.sender_id === session.user.id;
     
-    // Calcula posição relativa ao container do App (não à janela)
-    const containerRect = appContainerRef.current.getBoundingClientRect();
-    const relativeTop = rect.top - containerRect.top;
-    const relativeLeft = rect.left - containerRect.left;
-
-    // Decide se mostra em cima ou embaixo baseado no espaço no container
-    // Se a mensagem estiver no terço superior, mostra embaixo. Caso contrário, em cima.
-    const showBelow = relativeTop < (containerRect.height / 3);
+    // Calcula posição fixa (simples e robusta quando não há transforms no pai)
+    const showBelow = rect.top < 200;
     
-    // Estilo do Menu (posicionado absolutamente dentro do container)
+    // Estilo do Menu (Fixed)
     const menuStyle: React.CSSProperties = {
-      position: 'absolute',
+      position: 'fixed',
       zIndex: 100,
       minWidth: '220px',
       maxWidth: '280px',
-      // Se for eu, alinhar à direita. Se for outro, alinhar à esquerda (relativo ao balão)
-      ...(isMe ? { right: (containerRect.width - (relativeLeft + rect.width)) } : { left: relativeLeft }),
+      // Se for eu, alinhar à direita (mas não colado). Se for outro, alinhar à esquerda.
+      ...(isMe ? { right: (window.innerWidth - rect.right) } : { left: rect.left }),
       // Posição Vertical
-      ...(showBelow ? { top: relativeTop + rect.height + 8 } : { bottom: (containerRect.height - relativeTop) + 8 }),
+      ...(showBelow ? { top: rect.bottom + 8 } : { bottom: (window.innerHeight - rect.top) + 8 }),
     };
 
-    // Estilo do clone do balão (para referência visual)
+    // Estilo do clone do balão (Fixed)
     const cloneStyle: React.CSSProperties = {
-        position: 'absolute',
-        top: relativeTop,
-        left: relativeLeft,
+        position: 'fixed',
+        top: rect.top,
+        left: rect.left,
         width: rect.width,
         height: rect.height,
         zIndex: 91
@@ -329,7 +322,7 @@ export default function App() {
 
     return (
       <div 
-        className="absolute inset-0 z-[90] overflow-hidden"
+        className="fixed inset-0 z-[90] overflow-hidden"
         onClick={() => setContextMenuData(null)}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
@@ -593,7 +586,7 @@ export default function App() {
   }
 
   return (
-    <div ref={appContainerRef} className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col transition-all duration-300 ease-ios-spring">
+    <div className="max-w-md mx-auto h-[100dvh] relative overflow-hidden bg-black shadow-2xl sm:border-x border-ios-separator flex flex-col">
       {screen === 'home' && renderHomeScreen()}
       {screen === 'chat' && renderChatScreen()}
       {screen === 'info' && renderInfoScreen()}

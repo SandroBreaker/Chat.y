@@ -138,7 +138,7 @@ const InputArea: React.FC<InputAreaProps> = ({ onSendMessage }) => {
       />
 
       {/* Input Bar - Darker background and thinner top border */}
-      <div className="relative z-50 bg-black/80 backdrop-blur-xl border-t border-white/10 pb-safe transition-all duration-300 ease-ios">
+      <div className="relative z-50 bg-black/80 backdrop-blur-xl border-t border-white/10 pb-safe">
         <div className="flex items-center gap-3 px-3 py-2">
           <button 
             className={`p-2 rounded-full bg-ios-lightGray text-ios-textSecondary transition-all duration-300 ease-ios active:scale-95 ${isMediaSheetOpen ? 'rotate-45 bg-ios-blue text-white' : ''}`}

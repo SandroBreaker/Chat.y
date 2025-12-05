@@ -101,8 +101,7 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        /* Adiciona transição suave para mudanças de layout (ex: teclado) */
-        transition: height 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        /* Removed transition: height to prevent layout issues on keyboard open */
       }
       /* Safe Area support */
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
@@ -117,16 +116,16 @@
         }
       }
     </style>
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4"
+    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2"
   }
 }
 </script>
