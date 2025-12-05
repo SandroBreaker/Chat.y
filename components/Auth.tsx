@@ -113,9 +113,9 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
     <div className="flex flex-col items-center justify-center h-full bg-black px-8 animate-slide-up">
       <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center space-y-2">
-           <h1 className="text-4xl font-bold text-white tracking-tight">Bem-vindo</h1>
+           <h1 className="text-4xl font-bold text-white tracking-tight">Amour</h1>
            <p className="text-ios-textSecondary text-[17px]">
-             {isSignUp ? "Preencha os dados para criar sua conta." : "Insira suas credenciais para continuar."}
+             {isSignUp ? "Crie sua conta para começar." : "Conecte-se com quem você ama."}
            </p>
         </div>
 
@@ -134,7 +134,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                  <label className="text-xs font-bold text-ios-textSecondary uppercase tracking-wider ml-1">Usuário</label>
                  <input
                    type="text"
-                   placeholder="Defina seu usuário"
+                   placeholder="Seu nome de usuário"
                    value={username}
                    onChange={(e) => setUsername(e.target.value)}
                    className="w-full bg-ios-lightGray/50 border border-ios-separator rounded-2xl py-3.5 px-5 text-white focus:outline-none focus:border-ios-blue transition-all focus:bg-ios-lightGray"
@@ -187,7 +187,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
             disabled={loading}
             className="w-full bg-ios-blue text-white font-bold py-4 rounded-2xl active:scale-95 transition-all disabled:opacity-50 mt-4 shadow-lg shadow-ios-blue/20"
           >
-            {loading ? 'Processando...' : (isSignUp ? 'Cadastrar' : 'Entrar')}
+            {loading ? 'Processando...' : (isSignUp ? 'Criar Conta' : 'Entrar')}
           </button>
         </form>
 
@@ -203,7 +203,7 @@ export default function Auth({ onAuthSuccess }: { onAuthSuccess: () => void }) {
             }}
             className="text-ios-blue text-[15px] font-medium hover:underline transition-all"
           >
-            {isSignUp ? 'Já possui conta? Fazer Login' : 'Não tem conta? Cadastre-se'}
+            {isSignUp ? 'Já tem uma conta? Entrar' : 'Novo aqui? Criar Conta'}
           </button>
         </div>
       </div>
